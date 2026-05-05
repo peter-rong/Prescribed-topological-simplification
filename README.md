@@ -2,7 +2,7 @@
 
 Official repository for **Persistence-guided Prescribed Topological Simplification**, to appear in SIGGRAPH 2026.
 
-Reference implementation in two geometry backends:
+Reference implementation in two geometry backends: 
 
 | Mode | Domain | Primary input |
 |------|--------|----------------|
