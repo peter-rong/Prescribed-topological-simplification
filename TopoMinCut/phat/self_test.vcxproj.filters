@@ -1,0 +1,114 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\src\self_test.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\TEST_exhaustive_compress_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\chunk_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\exhaustive_compress_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\lazy_retrospective_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\row_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\spectral_sequence_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\standard_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\swap_twist_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\algorithms\twist_reduction.h">
+      <Filter>Header Files\algorithms</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\boundary_matrix.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\compute_persistence_pairs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\helpers\dualize.h">
+      <Filter>Header Files\helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\helpers\misc.h">
+      <Filter>Header Files\helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\helpers\thread_local_storage.h">
+      <Filter>Header Files\helpers</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\persistence_pairs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\Container_traits.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\Pivot_representation.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\Uniform_representation.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\Unordered_map_container_traits.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\bit_tree_pivot_column.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\default_representations.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\full_pivot_column.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\heap_column_rep.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\heap_pivot_column.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\list_column_rep.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\set_column_rep.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\sparse_pivot_column.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+    <ClInclude Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\include\phat\representations\vector_column_rep.h">
+      <Filter>Header Files\representations</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\l.rong\Desktop\Research\TopoMinCut\phat\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{84A5550A-6599-30A5-8CBC-36483E433DBA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\algorithms">
+      <UniqueIdentifier>{89518B20-2CA7-318F-93BA-6FDF53115FE9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\helpers">
+      <UniqueIdentifier>{AF6FFAAA-ACD3-3979-B686-D66F024FBC88}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\representations">
+      <UniqueIdentifier>{2D9BFA16-11A7-3E8F-A5C3-C051C207E9DE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{065CFDCC-4ED2-3390-9501-42FA3BC3BCB5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -22,6 +22,9 @@
 #include "mrc_reader.h"
 #include "marching_cubes.h"
 
+#include <Eigen/Sparse>
+#include "topomincut_runner.hpp"
+
 namespace prescribed_topo {
 namespace cubical {
 
@@ -2598,6 +2601,8 @@ int runCubicalMode(int argc, char* argv[]) {
     }
 
     double adjustment = std::stod(adjustment_str);
+
+    (void)cpp_program; // TopoMinCut runs in-process; flag kept for backward-compatible CLIs.
     
     core = -(core - adjustment);
     neighborhood = -(neighborhood - adjustment);
@@ -3361,22 +3366,37 @@ int runCubicalMode(int argc, char* argv[]) {
     
     std::cout << "Skipping marching cubes on original data for memory efficiency" << std::endl;
 
-    
-    // Call TopoMinCut program
-    std::string cmd = cpp_program + " --matrix " + output_file + " --alpha " + output_file2 + " --topK " + std::to_string(topK) + " --core " + std::to_string(core) + " --neighborhood " + std::to_string(neighborhood);
-    std::cout << "Executing: " << cmd << std::endl;
-    
-    try {
-        std::string result = exec_command(cmd);
-        std::cout << "Successfully executed TopoMinCut program" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Error executing TopoMinCut program: " << e.what() << std::endl;
+    std::cout << "Running TopoMinCut pipeline (in-process, Eigen inputs)..." << std::endl;
+    const size_t n_bm = filt.keptSimplices.size();
+    std::vector<Eigen::Triplet<int>> bm_triplets;
+    bm_triplets.reserve(n_bm * 8);
+    for (size_t col = 0; col < n_bm; ++col) {
+        for (int row : filt.keptChildrenByCol[col]) {
+            bm_triplets.emplace_back(static_cast<int>(row), static_cast<int>(col), 1);
+        }
+    }
+    Eigen::SparseMatrix<int> bm_sparse(static_cast<int>(n_bm), static_cast<int>(n_bm));
+    bm_sparse.setFromTriplets(bm_triplets.begin(), bm_triplets.end());
+
+    std::vector<int> bm_dims(n_bm);
+    std::vector<double> bm_alphas(n_bm);
+    for (size_t c = 0; c < n_bm; ++c) {
+        bm_dims[c] = filt.keptSimplices[c]->dimension;
+        bm_alphas[c] = filt.keptSimplices[c]->val;
     }
 
-    // Read output files from TopoMinCut
-    std::cout << "Reading TopoMinCut output files..." << std::endl;
-    
-    std::vector<double> new_alpha_values = read_double_values("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\alphas_updated.txt");
+    topomincut::RunParams tm_params;
+    tm_params.topK = topK;
+    tm_params.core = core;
+    tm_params.neighborhood = neighborhood;
+    topomincut::RunOutputs tm_out;
+    const int tm_rc = topomincut::runFromEigenSparse(bm_sparse, bm_dims, bm_alphas, tm_params, &tm_out);
+    if (tm_rc != 0) {
+        std::cerr << "TopoMinCut pipeline failed with exit code " << tm_rc << std::endl;
+        return 1;
+    }
+
+    std::vector<double> new_alpha_values = tm_out.alphas_updated;
     /*
     std::vector<int> birth_generating_sets = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\iset_birth_generating_sets.txt");
     std::vector<int> death_generating_sets = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\iset_death_generating_sets.txt");
@@ -3393,8 +3413,8 @@ int runCubicalMode(int argc, char* argv[]) {
         }
     }
     */
-    std::vector<int> remaining_negative = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\remaining_negative.txt");
-    std::vector<int> protected_indices = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\protected_indices.txt");
+    std::vector<int> remaining_negative = tm_out.remaining_negative;
+    std::vector<int> protected_indices = tm_out.protected_indices;
     //std::vector<int> new_generators = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\new_generators.txt");
 
 

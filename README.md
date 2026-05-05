@@ -9,20 +9,41 @@ Reference implementation in two geometry backends:
 | **Cubical** | Structured 3D grid | MRC volume (scalar field on voxels) |
 | **Tet** | Unstructured tetrahedral mesh | Gmsh `.msh` plus a boundary-definition file |
 
-Both modes share the same high-level pipeline (cell complex, filtration, and calls into an external min-cut solver) but use **different input parsers and combinatorial complexes**, chosen explicitly at the command line.
+Both modes share the same high-level pipeline (cell complex, filtration, and **TopoMinCut** min-cut optimization) but use **different input parsers and combinatorial complexes**, chosen explicitly at the command line.
+
+TopoMinCut is **vendored** under [`TopoMinCut/`](TopoMinCut/) and linked **in-process**: boundary data are passed as **Eigen sparse matrices** (no temporary boundary-matrix files required). Optional artifacts are still written under `output/topomincut/` for debugging.
+
+### TopoMinCut library API
+
+Headers used by the drivers:
+
+- [`TopoMinCut/include/topomincut_runner.hpp`](TopoMinCut/include/topomincut_runner.hpp) — `topomincut::runFromEigenSparse(...)` and `topomincut::runFromBoundaryMatrix(...)`.
+- [`TopoMinCut/include/boundary_matrix.hpp`](TopoMinCut/include/boundary_matrix.hpp) — `BoundaryMatrix::loadFromEigenCopy`, `loadAlphasVector` for custom loaders.
+
+`topomincut::RunOutputs` returns updated alphas (`alphas_updated`), skeleton index lists, and the **first-iteration permuted** sparse boundary matrix (`permuted_boundary_matrix`) aligned with the legacy `new_matrix.txt` layout.
+
+A standalone CLI remains available as **`TopoMinCut`** (same math as before; supports `--outputDir <dir>` for writable outputs).
 
 ## Requirements
 
 - **CMake** ≥ 3.10  
 - **C++17** compiler (GCC, Clang, or MSVC)
+- [**Boost.Graph**](https://www.boost.org/doc/libs/release/libs/graph/doc/table_of_contents.html) (for max-flow in TopoMinCut)
+- **Eigen** — bundled under [`TopoMinCut/dependencies`](TopoMinCut/dependencies) (header-only)
+- [**PHAT**](https://github.com/discounted-ph/phat) — bundled under [`TopoMinCut/phat`](TopoMinCut/phat) (built as a static library)
 
-Optional:
+On **Windows**, configuring CMake with the [vcpkg](https://github.com/microsoft/vcpkg) toolchain is the most reliable way to satisfy Boost:
 
-- **TopoMinCut** (or compatible driver): both modes invoke an external program passed via `--cpp_program`. Set this to your built binary so runs are reproducible across machines.
+```bash
+cmake -B build -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
+cmake --build build --config Release
+```
+
+The unified driver accepts `--cpp_program` for **backward compatibility**; it is ignored because TopoMinCut runs in-process.
 
 ## Build
 
-Configure and build from this directory:
+Configure and build from this directory (example **without** vcpkg, if Boost is already on `CMAKE_PREFIX_PATH`):
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release

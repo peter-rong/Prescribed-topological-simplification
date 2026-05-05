@@ -4,6 +4,8 @@ project(PrescribedTopologicalSimplification)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+add_subdirectory(TopoMinCut)
+
 add_executable(PrescribedTopologicalSimplification
     main.cpp
     cubical_mode.cpp
@@ -12,6 +14,8 @@ add_executable(PrescribedTopologicalSimplification
 )
 
 target_include_directories(PrescribedTopologicalSimplification PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
+
+target_link_libraries(PrescribedTopologicalSimplification PRIVATE topomincut_core)
 
 # TopoTet optionally uses parallel std::sort via <execution>; disable if your toolchain lacks TBB linkage.
 # target_compile_definitions(PrescribedTopologicalSimplification PRIVATE TOPOTET_NO_PAR_SORT)

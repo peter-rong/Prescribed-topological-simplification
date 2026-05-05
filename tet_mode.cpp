@@ -31,6 +31,9 @@
 #include <io.h>
 #endif
 #include "msh_reader.h"
+
+#include <Eigen/Sparse>
+#include "topomincut_runner.hpp"
 // Removed marching_cubes.h - not needed for tet mesh
 // Removed CGAL includes - alpha values are now read directly from input file
 
@@ -693,6 +696,7 @@ int runTetMode(int argc, char* argv[]) {
             topoMinCutMetricsLogFile = argv[++i];
         }
     }
+    (void)topoMinCutMetricsLogFile; // TopoMinCut runner no longer writes metrics files
 
     // Timings to write into JSONL (when enabled).
     double simplex2TimeMs = -1.0;
@@ -729,6 +733,8 @@ int runTetMode(int argc, char* argv[]) {
     };
 
     double adjustment = std::stod(adjustment_str);
+
+    (void)cpp_program; // TopoMinCut runs in-process; flag kept for backward-compatible CLIs.
     
     core = -(core - adjustment);
     neighborhood = -(neighborhood - adjustment);
@@ -2448,7 +2454,7 @@ int runTetMode(int argc, char* argv[]) {
     // Current filter behavior is "keep all" in sorted order; avoid large FilterResult deep copies.
     std::vector<int> newToOld(static_cast<size_t>(N));
     std::iota(newToOld.begin(), newToOld.end(), 0);
-
+    /*
     // Persist sorted inputs for TopoMinCut (ASCII mode expected by your pipeline)
     {
         std::ofstream f(output_file);
@@ -2475,6 +2481,39 @@ int runTetMode(int argc, char* argv[]) {
             f2 << v << std::endl;
         }
     }
+    */
+    topomincut::RunOutputs tet_topo_out;
+    const size_t n_bm = dimsSorted.size();
+    std::vector<Eigen::Triplet<int>> bm_triplets;
+    bm_triplets.reserve(n_bm * 12);
+    for (size_t col = 0; col < n_bm; ++col) {
+        const int begin = childrenOffsets[col];
+        const int end = childrenOffsets[col + 1];
+        for (int at = begin; at < end; ++at) {
+            bm_triplets.emplace_back(childrenIndices[static_cast<size_t>(at)], static_cast<int>(col), 1);
+        }
+    }
+    Eigen::SparseMatrix<int> bm_sparse(static_cast<int>(n_bm), static_cast<int>(n_bm));
+    bm_sparse.setFromTriplets(bm_triplets.begin(), bm_triplets.end());
+
+    std::vector<int> bm_dims(n_bm);
+    for (size_t c = 0; c < n_bm; ++c) {
+        bm_dims[c] = dimsSorted[c];
+    }
+
+    topomincut::RunParams tm_params;
+    tm_params.topK = topK;
+    tm_params.core = core;
+    tm_params.neighborhood = neighborhood;
+    tm_params.cavitySkip = cavitySkip;
+    tm_params.handleSkip = handleSkip;
+    tm_params.componentSkip = componentSkip;
+    std::cout << "Running TopoMinCut pipeline (in-process, Eigen inputs)..." << std::endl;
+    const int tm_rc = topomincut::runFromEigenSparse(bm_sparse, bm_dims, valsSorted, tm_params, &tet_topo_out);
+    if (tm_rc != 0) {
+        std::cerr << "TopoMinCut pipeline failed with exit code " << tm_rc << std::endl;
+        return 1;
+    }
 
     // Free memory from original data structures that are no longer needed
     std::cout << "Freeing memory from original data structures..." << std::endl;
@@ -2500,33 +2539,7 @@ int runTetMode(int argc, char* argv[]) {
         return "\"" + s + "\"";
     };
     */
-    std::string cmd = cpp_program
-                     + " --matrix " + output_file
-                     + " --alpha " + output_file2
-                     + " --topK " + std::to_string(topK)
-                     + " --core " + std::to_string(core)
-                     + " --neighborhood " + std::to_string(neighborhood)
-                     + " --cavitySkip " + std::to_string(cavitySkip)
-                     + " --handleSkip " + std::to_string(handleSkip)
-                     + " --componentSkip " + std::to_string(componentSkip);
-    if (!topoMinCutMetricsLogFile.empty()) {
-        cmd += " --metricsLog " + topoMinCutMetricsLogFile;
-    }
-    std::cout << "Executing: " << cmd << std::endl;
-    
-    try {
-        std::string result = exec_command(cmd);
-        std::cout << "Successfully executed TopoMinCut program" << std::endl;
-    } catch (const std::exception& e) {
-        std::cerr << "Error executing TopoMinCut program: " << e.what() << std::endl;
-    }
-    
-    // Read output files from TopoMinCut
-    std::cout << "Reading TopoMinCut output files..." << std::endl;
-    
-    std::vector<double> new_alpha_values = read_double_values("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\alphas_updated.txt");
-    std::vector<int> birth_generating_sets = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\iset_birth_generating_sets.txt");
-    std::vector<int> death_generating_sets = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\iset_death_generating_sets.txt");
+    std::vector<double> new_alpha_values = tet_topo_out.alphas_updated;
 
     // Update simplex values with new alpha values.
     // Matrix / alphas passed to TopoMinCut are in *kept* order (j = 0 .. k-1), same as newToOld / output_file2.
@@ -4011,8 +4024,8 @@ int runTetMode(int argc, char* argv[]) {
     //so do a for loop
 
     
-    std::vector<int> remaining_negative = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\remaining_negative.txt");
-    std::vector<int> protected_indices = read_cell_indices("C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\output\\protected_indices.txt");
+    std::vector<int> remaining_negative = tet_topo_out.remaining_negative;
+    std::vector<int> protected_indices = tet_topo_out.protected_indices;
 
     // Output remaining_negative to PLY format
     {
