@@ -1,6 +1,8 @@
 # Prescribed topological simplification
 
-Reference implementation for **Persistence-based Prescribed Topological Simplification** in two geometry backends:
+Official repository for **Persistence-guided Prescribed Topological Simplification**, to appear in SIGGRAPH 2026.
+
+Reference implementation in two geometry backends:
 
 | Mode | Domain | Primary input |
 |------|--------|----------------|
