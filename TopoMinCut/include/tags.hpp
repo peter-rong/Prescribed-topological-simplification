@@ -2,9 +2,7 @@
 
 #include "boundary_matrix.hpp"
 #include <vector>
-#include <unordered_map>
 #include <string>
-#include <chrono>
 #include <Eigen/Sparse>
 
 class Tags {
@@ -47,10 +45,6 @@ public:
     const std::vector<double>& getBirthTimes() const { return birth_times_; }
     const std::vector<double>& getDeathTimes() const { return death_times_; }
     
-    // Get timing information
-    const std::unordered_map<std::string, double>& getTimings() const { return timings_; }
-    void printTimings() const;
-
     // New function to compute conflicts
     
     
@@ -74,11 +68,6 @@ private:
     std::vector<double> birth_times_;
     std::vector<double> death_times_;
     
-    // Timing information
-    mutable std::unordered_map<std::string, double> timings_;  // Operation name -> time in milliseconds
-    
     // Helper methods
     void initializeMatrices();
-    void startTimer(const std::string& operation) const;
-    void stopTimer(const std::string& operation) const;
-}; 
+};

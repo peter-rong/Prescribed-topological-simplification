@@ -3,7 +3,7 @@
 namespace prescribed_topo {
 namespace tet {
 
-/** Tet mesh mode: Gmsh .msh + boundary file (same CLI as legacy TopoTet after the mode token). */
+/** Tet mesh mode: Gmsh .msh + per-vertex alpha file (same CLI shape as legacy TopoTet after the mode token). */
 int runTetMode(int argc, char* argv[]);
 
 } // namespace tet

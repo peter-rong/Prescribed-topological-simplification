@@ -2,25 +2,20 @@
 #include <algorithm>
 #include <queue>
 #include <iostream>
-#include <iomanip>
 #include <unordered_set>
 
 Tags::Tags(const BoundaryMatrix& boundary_matrix)
     : boundary_matrix_(boundary_matrix) {
-    startTimer("constructor");
     
     // Initialize tags array to 0
     tags_.resize(boundary_matrix_.getAlphaSize(), -1);
     
     // Initialize matrices
     initializeMatrices();
-    
-    stopTimer("constructor");
 }
 
 void Tags::initializeTags(const std::vector<std::pair<int, int>>& foreground_pairs,
                          const std::vector<std::pair<int, int>>& background_pairs) {
-    startTimer("initialize_tags");
     
     // Fill tags from higher to lower for foreground pairs
     for (const auto& pair : foreground_pairs) {
@@ -35,12 +30,9 @@ void Tags::initializeTags(const std::vector<std::pair<int, int>>& foreground_pai
         int child = pair.second;
         tags_[child] = parent;
     }
-    
-    stopTimer("initialize_tags");
 }
 
 void Tags::initializeMatrices() {
-    startTimer("initialize_matrices");
     
     int alpha_size = boundary_matrix_.getAlphaSize();
     const auto& matrix = boundary_matrix_.getMatrix();
@@ -96,12 +88,9 @@ void Tags::initializeMatrices() {
     std::cout << "  Size: " << back_matrix_.rows() << "x" << back_matrix_.cols() << std::endl;
     std::cout << "  Non-zeros: " << back_matrix_.nonZeros() << std::endl;
     std::cout << "  Density: " << (double)back_matrix_.nonZeros() / (back_matrix_.rows() * back_matrix_.cols()) * 100 << "%" << std::endl;
-    
-    stopTimer("initialize_matrices");
 }
 
 void Tags::initializeBirthDeathInfo(const std::vector<std::pair<int, int>>& filtered_pairs) {
-    startTimer("initialize_birth_death_info");
     
     // Get alpha values
     const std::vector<double> alphas = boundary_matrix_.getAlphas();
@@ -124,12 +113,9 @@ void Tags::initializeBirthDeathInfo(const std::vector<std::pair<int, int>>& filt
         birth_times_.push_back(birth_time);
         death_times_.push_back(death_time);
     }
-    
-    stopTimer("initialize_birth_death_info");
 }
 
 std::vector<int> Tags::getGeneratingSetForeFast(int starting_index) const {
-    startTimer("get_generating_set");
     
     // Pre-allocate vectors with reasonable sizes
     std::vector<int> set;
@@ -202,12 +188,10 @@ std::vector<int> Tags::getGeneratingSetForeFast(int starting_index) const {
         }
     }
     
-    stopTimer("get_generating_set");
     return set;
 }
 
 std::vector<int> Tags::getGeneratingSetBackFast(int starting_index) const {
-    startTimer("get_generating_set_back");
     
     std::vector<std::vector<int>> row_lists(back_matrix_.rows());
     std::vector<std::vector<int>> col_lists(back_matrix_.cols());
@@ -279,7 +263,6 @@ std::vector<int> Tags::getGeneratingSetBackFast(int starting_index) const {
         }
     }
 
-    stopTimer("get_generating_set_back");
     return result;
 }
 
@@ -361,37 +344,11 @@ std::vector<int> Tags::getGeneratingSetBackFast2(const std::vector<std::vector<i
     return result;
 }
 
-void Tags::startTimer(const std::string& operation) const {
-    timings_[operation + "_start"] = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::high_resolution_clock::now().time_since_epoch()
-    ).count() / 1000.0;  // Convert to milliseconds
-}
-
-void Tags::stopTimer(const std::string& operation) const {
-    double end_time = std::chrono::duration_cast<std::chrono::microseconds>(
-        std::chrono::high_resolution_clock::now().time_since_epoch()
-    ).count() / 1000.0;  // Convert to milliseconds
-    
-    double start_time = timings_[operation + "_start"];
-    timings_[operation] = end_time - start_time;
-    timings_.erase(operation + "_start");  // Remove the start time entry
-}
-
-void Tags::printTimings() const {
-    std::cout << "\nTiming information:" << std::endl;
-    std::cout << std::fixed << std::setprecision(3);
-    for (const auto& [operation, time] : timings_) {
-        std::cout << std::setw(25) << operation << ": " << std::setw(10) << time << " ms" << std::endl;
-    }
-}
-
 std::vector<std::vector<int>> Tags::computeConflicts(
     const std::vector<int>& real_birth_cells,
     const std::vector<int>& real_death_cells,
     const std::vector<std::vector<int>>& real_generating_sets_fore_indices,
     const std::vector<std::vector<int>>& real_generating_sets_back_indices) const {
-    
-    startTimer("compute_conflicts");
     
     // Initialize conflict matrix with zeros
     std::vector<std::vector<int>> conflicts(real_birth_cells.size(), 
@@ -444,6 +401,5 @@ std::vector<std::vector<int>> Tags::computeConflicts(
         }
     }
     
-    stopTimer("compute_conflicts");
     return conflicts;
 } 

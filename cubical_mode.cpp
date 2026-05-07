@@ -12,7 +12,6 @@
 #include <sstream>
 #include <iomanip>
 #include <limits>
-#include <chrono>
 #include <filesystem>
 #include <unordered_set>
 #include <map>
@@ -2563,7 +2562,8 @@ int runCubicalMode(int argc, char* argv[]) {
     if (argc < 6) {
         std::cerr << "Usage: " << argv[0] 
                   << " cubical <input_file> <output_file> <output_file2> <adjustment> <dtype> "
-                  << "[-a] [--cpp_program <path>] [--topK <value>] [--core <value>] [--neighborhood <value>]" << std::endl;
+                  << "[-a] [--cpp_program <path>] [--topK <value>] "
+                  << "[--cavitySkip <n>] [--handleSkip <n>] [--componentSkip <n>]" << std::endl;
         return 1;
     }
     
@@ -2576,9 +2576,9 @@ int runCubicalMode(int argc, char* argv[]) {
     bool ascii_mode = false;
     std::string cpp_program = "C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\build\\release\\TopoMinCut";
     int topK = 0;
-    
-
-    auto start_time = std::chrono::high_resolution_clock::now();
+    int cavitySkip = 0;
+    int handleSkip = 0;
+    int componentSkip = 0;
 
     // core/neighborhood use floating infinities so callers can check via std::isinf
     double core = std::numeric_limits<double>::infinity();
@@ -2593,10 +2593,12 @@ int runCubicalMode(int argc, char* argv[]) {
             cpp_program = argv[++i];
         } else if (std::string(argv[i]) == "--topK" && i + 1 < argc) {
             topK = std::stoi(argv[++i]);
-        } else if (std::string(argv[i]) == "--core" && i + 1 < argc) {
-            core = std::stod(argv[++i]);
-        } else if (std::string(argv[i]) == "--neighborhood" && i + 1 < argc) {
-            neighborhood = std::stod(argv[++i]);
+        } else if (std::string(argv[i]) == "--cavitySkip" && i + 1 < argc) {
+            cavitySkip = std::stoi(argv[++i]);
+        } else if (std::string(argv[i]) == "--handleSkip" && i + 1 < argc) {
+            handleSkip = std::stoi(argv[++i]);
+        } else if (std::string(argv[i]) == "--componentSkip" && i + 1 < argc) {
+            componentSkip = std::stoi(argv[++i]);
         }
     }
 
@@ -2629,13 +2631,8 @@ int runCubicalMode(int argc, char* argv[]) {
     
     std::cout << "Data shape: " << dims[0] << "x" << dims[1] << "x" << dims[2] << std::endl;
 
-    auto start_time_oldSurfaceContour = std::chrono::high_resolution_clock::now();
-        // ... rest of the code
     auto old_result = contour3DSmall(data,0.0);
     reportMeshManifoldness(old_result.first, old_result.second, "Old Result");
-
-    auto end_time_oldSurfaceContour = std::chrono::high_resolution_clock::now();
-    auto oldSurfaceContourDuration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time_oldSurfaceContour - start_time_oldSurfaceContour);
 
     int totalVertices = dims[0] * dims[1] * dims[2];
 
@@ -3330,9 +3327,6 @@ int runCubicalMode(int argc, char* argv[]) {
     quads.clear();
     quads.shrink_to_fit();
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto simplice_generation_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
-
     
     // Persist filtered inputs for TopoMinCut (ASCII mode expected by your pipeline)
     {
@@ -3389,6 +3383,9 @@ int runCubicalMode(int argc, char* argv[]) {
     tm_params.topK = topK;
     tm_params.core = core;
     tm_params.neighborhood = neighborhood;
+    tm_params.cavitySkip = cavitySkip;
+    tm_params.handleSkip = handleSkip;
+    tm_params.componentSkip = componentSkip;
     topomincut::RunOutputs tm_out;
     const int tm_rc = topomincut::runFromEigenSparse(bm_sparse, bm_dims, bm_alphas, tm_params, &tm_out);
     if (tm_rc != 0) {
@@ -4086,7 +4083,6 @@ int runCubicalMode(int argc, char* argv[]) {
     data.shrink_to_fit();
     std::cout << "Freed newCCForMarked memory" << std::endl;
     
-    auto startCellComplexCreate = std::chrono::high_resolution_clock::now();
     // Convert high-res array to cell complex structure
     // Use paddedCC if you want padding, otherwise use newCCForMarked
 
@@ -4103,15 +4099,7 @@ int runCubicalMode(int argc, char* argv[]) {
     
     int originalNumVertices = cellComplex.cc[0].size();
 
-    auto endCellComplexCreate = std::chrono::high_resolution_clock::now();
-    auto cellComplexCreateDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endCellComplexCreate - startCellComplexCreate);
-    std::cout << "Cell complex creation took " << cellComplexCreateDuration.count() << " milliseconds" << std::endl;
-
     auto refinedCellComplex = refineCubesToMixed(cellComplex);
-    
-    auto endRefineCellComplex = std::chrono::high_resolution_clock::now();
-    auto refineCellComplexDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endRefineCellComplex - endCellComplexCreate);
-    std::cout << "Cell complex refinement took " << refineCellComplexDuration.count() << " milliseconds" << std::endl;
     // Clear cellComplex to free memory (no longer needed after refinement)
     cellComplex.cc.clear();
     cellComplex.vals.clear();
@@ -4124,9 +4112,6 @@ int runCubicalMode(int argc, char* argv[]) {
     std::cout <<"Refined cell complex has " << refinedCellComplex.vertexCoords.size() << " vertices, " << refinedCellComplex.subs.size() <<" 3 dimensional cells" << std::endl;
 
     auto finalSurface = contourMixedCells(refinedCellComplex.vertexCoords, refinedCellComplex.vertexVals, refinedCellComplex.subs, originalNumVertices, vertNeedMidPoint);
-    auto endContourMixedCells = std::chrono::high_resolution_clock::now();
-    auto contourMixedCellsDuration = std::chrono::duration_cast<std::chrono::milliseconds>(endContourMixedCells - endRefineCellComplex);
-    std::cout << "Contour mixed cells took " << contourMixedCellsDuration.count() << " milliseconds" << std::endl;
     // Clear refinedCellComplex to free memory (no longer needed after contouring)
     refinedCellComplex.vertexCoords.clear();
     refinedCellComplex.vertexVals.clear();
@@ -4411,8 +4396,6 @@ int runCubicalMode(int argc, char* argv[]) {
     */
 
 
-    std::cout << "Simplice generation completed in " << (simplice_generation_duration- oldSurfaceContourDuration).count() << " milliseconds" << std::endl;
-    
     std::cout << "Processing completed successfully" << std::endl;
     return 0;
 

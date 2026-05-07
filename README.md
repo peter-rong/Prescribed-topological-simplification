@@ -7,7 +7,7 @@ One executable supports **two usage modes** (same overall pipeline: filtration, 
 | Mode | When to use it |
 |------|----------------|
 | **Cubical** | Scalar field on a 3D **regular grid** (MRC volume) |
-| **Tet** | Scalar field on an unstructured **tetrahedral mesh** (Gmsh `.msh` + boundary file) |
+| **Tet** | Scalar field on an unstructured **tetrahedral mesh** (Gmsh `.msh` + per-vertex **alpha** file) |
 
 TopoMinCut lives under [`TopoMinCut/`](TopoMinCut/) and is **linked in-process** (boundary matrix and alphas passed as Eigen structures; the main driver does not spawn an external TopoMinCut process).
 
@@ -17,6 +17,8 @@ TopoMinCut lives under [`TopoMinCut/`](TopoMinCut/) and is **linked in-process**
 - **Boost.Graph** — provide via your system, `CMAKE_PREFIX_PATH`, or [vcpkg](https://github.com/microsoft/vcpkg)
 - **Eigen** — headers already included under [`TopoMinCut/dependencies`](TopoMinCut/dependencies)
 - **PHAT** — vendored under [`TopoMinCut/phat`](TopoMinCut/phat)
+
+**Platforms:** Developed and tested on **Windows** and **macOS**. **Linux** has not been exercised here; it should work in principle but may need small syntax or path tweaks.
 
 ## Build
 
@@ -34,20 +36,7 @@ cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```
 
-Output binary:
-
-- Linux/macOS: `build/PrescribedTopologicalSimplification`
-- Windows (VS generator): `build/Release/PrescribedTopologicalSimplification.exe`
-
-### Tet mode: parallel `std::sort` (optional)
-
-If linking fails on some Linux setups (e.g. missing TBB for `<execution>`), uncomment in root `CMakeLists.txt`:
-
-```cmake
-target_compile_definitions(PrescribedTopologicalSimplification PRIVATE TOPOTET_NO_PAR_SORT)
-```
-
-## Command line
+## Usage
 
 ```text
 PrescribedTopologicalSimplification <cubical|cubic|tet> ...arguments...
@@ -62,62 +51,46 @@ Run from a directory where relative **`output/`** is OK (both modes write artifa
 ### Cubical mode
 
 ```text
-PrescribedTopologicalSimplification cubical <input.mrc> <output_file> <output_file2> <adjustment> <dtype> [optional flags...]
+PrescribedTopologicalSimplification cubical <input.mrc> <output_file> <output_file2> <adjustment> <dtype> [options]
 ```
 
 Aliases: **`cubic`** (same as **`cubical`**).
 
-**Required**
-
-| Argument | Description |
-|----------|-------------|
+| Argument / option | Description |
+|-------------------|-------------|
 | `input.mrc` | MRC scalar volume |
 | `output_file`, `output_file2` | Basenames; files are placed under `output/` |
-| `adjustment` | Scalar used in the pipeline (with `core` / `neighborhood`) |
+| `adjustment` | Offset added to the scalar field so the target isosurface is the **0-level set** of the volume |
 | `dtype` | Dtype flag for the pipeline |
-
-**Optional flags**
-
-| Flag | Description |
-|------|-------------|
-| `-a`, `--ascii` | ASCII IO mode |
-| `--cpp_program <path>` | Ignored (kept for backward-compatible scripts) |
-| `--topK <n>` | TopoMinCut: skip longest `n` persistence pairs when building cuts |
-| `--core <value>` | Core threshold (see implementation after adjustment) |
-| `--neighborhood <value>` | Neighborhood threshold (after adjustment) |
+| `-a`, `--ascii` *(optional)* | ASCII IO mode |
+| `--cpp_program <path>` *(optional)* | Ignored (backward-compatible scripts) |
+| `--topK <n>` *(optional)* | TopoMinCut: skip longest `n` persistence pairs when building cuts |
+| `--cavitySkip <n>` *(optional)* | TopoMinCut: skip the first `n` cavity (2D) features in generating sets |
+| `--handleSkip <n>` *(optional)* | TopoMinCut: skip the first `n` handle (1D) features |
+| `--componentSkip <n>` *(optional)* | TopoMinCut: skip the first `n` component (0D) features |
 
 ---
 
 ### Tet mode
 
 ```text
-PrescribedTopologicalSimplification tet <mesh.msh> <boundary_file> <output_file> <output_file2> <adjustment> <dtype> [optional flags...]
+PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <output_file> <output_file2> <adjustment> <dtype> [options]
 ```
 
-**Required**
-
-| Argument | Description |
-|----------|-------------|
+| Argument / option | Description |
+|-------------------|-------------|
 | `mesh.msh` | Gmsh tet mesh |
-| `boundary_file` | Boundary definition |
+| `alpha_file` | One scalar **alpha** per mesh vertex (e.g. signed distance to the surface); file format is consumed by `MSHReader::readVertexAlphas` |
 | `output_file`, `output_file2` | Basenames under `output/` |
-| `adjustment`, `dtype` | Same roles as cubical mode |
-
-**Optional flags**
-
-| Flag | Description |
-|------|-------------|
-| `-a`, `--ascii` | ASCII IO mode |
-| `--cpp_program <path>` | Ignored (backward compatibility) |
-| `--topK <n>` | Same as cubical |
-| `--core <value>` | Same as cubical |
-| `--neighborhood <value>` | Same as cubical |
-| `--tet_labels <path>` | Optional tet label file |
-| `--tetMetricsLog <jsonl>` | Append driver timing (JSON Lines) |
-| `--cavitySkip <n>` | Skip first `n` cavity features (per driver logic) |
-| `--handleSkip <n>` | Skip first `n` handle features |
-| `--componentSkip <n>` | Skip first `n` component features |
-| `--topoMinCutMetricsLog <path>` | Accepted for compatibility; TopoMinCut no longer writes this log |
+| `adjustment` | Same as cubical: offsets the field so the desired isosurface is the **0-level set** |
+| `dtype` | Dtype flag for the pipeline |
+| `-a`, `--ascii` *(optional)* | ASCII IO mode |
+| `--cpp_program <path>` *(optional)* | Ignored (backward compatibility) |
+| `--topK <n>` *(optional)* | Same as cubical |
+| `--tet_labels <path>` *(optional)* | Tet label file |
+| `--cavitySkip <n>` *(optional)* | Same as cubical (TopoMinCut) |
+| `--handleSkip <n>` *(optional)* | Same as cubical |
+| `--componentSkip <n>` *(optional)* | Same as cubical |
 
 ---
 

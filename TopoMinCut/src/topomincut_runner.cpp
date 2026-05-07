@@ -21,7 +21,6 @@
 #include <boost/graph/read_dimacs.hpp>
 #include <boost/graph/graph_utility.hpp>
 #include <unordered_set>
-#include <chrono>
 
 namespace topomincut {
 
@@ -49,14 +48,9 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     for (int iteration = 0;; ++iteration) {
         std::cout << "\n=== TopoMinCut iteration " << (iteration + 1) << " ===" << std::endl;
 
-    auto start_persistence = std::chrono::high_resolution_clock::now();
-
     Persistence persistence(boundary_matrix, "");
     persistence.computePersistence(core, neighborhood);
 
-    auto end_persistence = std::chrono::high_resolution_clock::now();
-    auto persistence_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_persistence - start_persistence).count();
-    
     // Get filtered pairs (with one positive and one negative alpha)
     const auto& filtered_pairs = persistence.getFilteredPairs();
     std::cout << "Found " << filtered_pairs.size() << " filtered persistence pairs:\n\n";
@@ -150,8 +144,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
 
     std::cout << std::endl;
 
-    auto start_thinning = std::chrono::high_resolution_clock::now();
-    
     // Perform foreground thinning
     std::cout << "\nPerforming foreground thinning..." << std::endl;
     Thinning foreground_thinning(boundary_matrix);
@@ -190,9 +182,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     std::vector<int> remaining_positive = background_thinning.getRemainingPositiveIndices();
     std::cout << "Number of remaining positive indices after background thinning: " << remaining_positive.size() << std::endl;
     
-    auto end_thinning = std::chrono::high_resolution_clock::now();
-    auto thinning_duration =
-        std::chrono::duration_cast<std::chrono::milliseconds>(end_thinning - start_thinning).count();
     // Print background thinning results
     const auto& background_removed_pairs = background_thinning.getRemovedPairs();
     if (!background_removed_pairs.empty()) {
@@ -212,8 +201,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
         
     }
     
-
-    auto start_tags = std::chrono::high_resolution_clock::now();
 
     // Create Tags object
     Tags tags(boundary_matrix);
@@ -282,8 +269,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     }
     std::cout << "Using " << (birth_cells.size() - start_idx) << " pairs after finding first pair with birth_time + death_time < 0.8 (start_idx = " << start_idx << ")\n\n";
     */
-    auto start_time1 = std::chrono::high_resolution_clock::now(); //TEST
-
     std::vector<std::vector<int>> fore_col_lists(tags.getForegroundMatrix().cols());
     
     // Pre-allocate space in lists
@@ -323,11 +308,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     std::vector<int> new_birth_indices;
     new_birth_indices.reserve(death_cells.size());
 
-
-    auto end_time1 = std::chrono::high_resolution_clock::now(); //TEST
-    auto time1_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time1 - start_time1).count();
-    std::cout << "Time to build lists (part of persistence computation io ): " << time1_duration << " ms" << std::endl;
-
     
     //TESTs
     int cavity_counter = 0;
@@ -359,8 +339,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
         }
     }
     */
-    auto start_time2 = std::chrono::high_resolution_clock::now();
-
     std::vector<bool> isolated_fore_vec(boundary_matrix.rows(), true);
 
     for (size_t i = 0; i< remaining_negative.size(); ++i){
@@ -372,11 +350,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
             isolated_fore_vec[idx2] = false;
         }
     }
-
-    auto test_end_time = std::chrono::high_resolution_clock::now();
-    auto test_duration = std::chrono::duration_cast<std::chrono::milliseconds>(test_end_time - start_time2).count();
-    std::cout << "Time to check isolation (will be saved without io ): " << test_duration << " ms" << std::endl;
-
 
     std::vector<std::vector<int>> all_generating_sets_fore_indices_test;
     all_generating_sets_fore_indices_test.reserve(birth_cells.size());
@@ -416,7 +389,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
 
         std::vector<int> fore_set;
         if (isolated_fore) {
-            auto gen_fore_start = std::chrono::high_resolution_clock::now();
             //fore_set = tags.getGeneratingSetForeFast(birth_cell);
             fore_set = tags.getGeneratingSetForeFast2(fore_col_lists, birth_cell);
         } // else leave as empty set
@@ -472,11 +444,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     back_row_lists.clear();
     back_row_lists.shrink_to_fit();
 
-    auto end_time2 = std::chrono::high_resolution_clock::now(); //TEST
-    auto time2_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time2 - start_time2).count();
-    std::cout << "Time to get all generating sets (time2): " << time2_duration << " ms" << std::endl;
-    
-    auto start_time3 = std::chrono::high_resolution_clock::now(); //TEST
     /*
     
     std::vector<int> real_birth_cells_test;
@@ -574,15 +541,7 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     auto conflicts = tags.computeConflicts(real_birth_cells, real_death_cells,
                                          real_generating_sets_fore_indices,
                                          real_generating_sets_back_indices);
-    
-    auto end_time3 = std::chrono::high_resolution_clock::now(); //TEST
-    auto time3_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time3 - start_time3).count();
-    std::cout << "Time to compute conflicts (time3): " << time3_duration << " ms" << std::endl;
 
-    // Print timing information
-    tags.printTimings();
-
-    auto start_time4 = std::chrono::high_resolution_clock::now(); //TEST
     // Compute min-cut using the new function
     
     auto [cut_birth_nodes, cut_death_nodes] = compute_min_cut(
@@ -593,16 +552,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
         conflicts,
         alphas
     );
-    auto end_time4 = std::chrono::high_resolution_clock::now(); //TEST
-    auto time4_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time4 - start_time4).count();
-    std::cout << "Time to compute min-cut (time4): " << time4_duration << " ms" << std::endl;
-    auto end_min_cut = std::chrono::high_resolution_clock::now();
-
-    // Print final timing results
-    std::cout << "\nTiming Results:" << std::endl;
-    std::cout << "Persistence computation duration: " << persistence_duration + time1_duration << " ms" << std::endl;
-    std::cout << "Thinning computation duration: " << thinning_duration << " ms" << std::endl;
-    std::cout << "Total program (excluding file I/O, persistence, and matrix output): " << std::chrono::duration_cast<std::chrono::milliseconds>(end_min_cut - start_tags).count() - time1_duration << " ms" << std::endl;
 
     // Compute ISET_birth and ISET_death (complements)
     std::vector<int> ISET_birth = compute_iset_indices(cut_birth_nodes, static_cast<int>(real_birth_cells.size()));
@@ -665,7 +614,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     // === FINAL TASK: Update alphas, reorder, and build new boundary matrix ===
     
     // 1. Set new alpha values for cut/filled cells
-    auto start_alphas = std::chrono::high_resolution_clock::now();
     std::vector<double> new_alphas = alphas;
 
     //find the highest negative alpha
@@ -712,13 +660,8 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
     }
     global_alpha_file.close();
     */
-    auto end_alphas = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to update alphas: " 
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_alphas - start_alphas).count() 
-              << " ms" << std::endl;
 
     // 2. Compute stable sort permutation (new_to_old)
-    auto start_sort = std::chrono::high_resolution_clock::now();
     std::vector<int> new_to_old(new_alphas.size());
     std::iota(new_to_old.begin(), new_to_old.end(), 0);
     std::stable_sort(new_to_old.begin(), new_to_old.end(),
@@ -728,24 +671,14 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
             return i < j;
         }
     );
-    auto end_sort = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to compute sort permutation: " 
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_sort - start_sort).count() 
-              << " ms" << std::endl;
 
     // 3. Build old_to_new index map
-    auto start_map = std::chrono::high_resolution_clock::now();
     std::vector<int> old_to_new(new_alphas.size());
     for (size_t i = 0; i < new_to_old.size(); ++i) {
         old_to_new[new_to_old[i]] = i;
     }
-    auto end_map = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to build index map: " 
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_map - start_map).count() 
-              << " ms" << std::endl;
 
     // 4. Build new boundary matrix
-    auto start_matrix = std::chrono::high_resolution_clock::now();
     Eigen::SparseMatrix<int> new_matrix(new_alphas.size(), new_alphas.size());
     
     // Pre-allocate triplets with exact size from original matrix
@@ -762,16 +695,11 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
         }
     }
     new_matrix.setFromTriplets(triplets.begin(), triplets.end());
-    auto end_matrix = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to build new matrix: " 
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_matrix - start_matrix).count() 
-              << " ms" << std::endl;
 
     std::cout << std::endl;
     std::cout << "New boundary matrix nonzeros: " << new_matrix.nonZeros() << std::endl;
 
     // 5. Update final alphas and dimensions according to new order
-    auto start_final = std::chrono::high_resolution_clock::now();
     std::vector<double> final_alphas(new_alphas.size());
     std::vector<int> final_dimensions(new_alphas.size());
     const auto& old_dimensions = boundary_matrix.getDimensions();
@@ -780,10 +708,6 @@ int runFromBoundaryMatrix(BoundaryMatrix& boundary_matrix, const RunParams& para
         final_alphas[i] = new_alphas[new_to_old[i]];
         final_dimensions[i] = old_dimensions[new_to_old[i]];
     }
-    auto end_final = std::chrono::high_resolution_clock::now();
-    std::cout << "Time to update final alphas and dimensions: " 
-              << std::chrono::duration_cast<std::chrono::milliseconds>(end_final - start_final).count() 
-              << " ms" << std::endl;
 
     
     // Output final alphas to file

@@ -12,7 +12,6 @@
 #include <sstream>
 #include <iomanip>
 #include <limits>
-#include <chrono>
 #include <cmath>
 #include <random>
 #include <filesystem>
@@ -637,17 +636,15 @@ int runTetMode(int argc, char* argv[]) {
     // Parse command line arguments
     if (argc < 7) {
         std::cerr << "Usage: " << argv[0] 
-                  << " tet <mesh_file> <boundary_file> <output_file> <output_file2> <adjustment> <dtype> "
-                  << "[-a] [--cpp_program <path>] [--topK <value>] [--core <value>] [--neighborhood <value>] "
+                  << " tet <mesh_file> <alpha_file> <output_file> <output_file2> <adjustment> <dtype> "
+                  << "[-a] [--cpp_program <path>] [--topK <value>] "
                   << "[--tet_labels <path>] "
-                  << "[--tetMetricsLog <jsonl_file>] "
-                  << "[--cavitySkip <number>] [--handleSkip <number>] [--componentSkip <number>] "
-                  << "[--topoMinCutMetricsLog <jsonl_file>]" << std::endl;
+                  << "[--cavitySkip <number>] [--handleSkip <number>] [--componentSkip <number>]" << std::endl;
         return 1;
     }
     
     std::string mesh_file = argv[1];
-    std::string boundary_file = argv[2];
+    std::string alpha_file = argv[2];
     std::string output_file = "output/" + std::string(argv[3]);
     std::string output_file2 = "output/" + std::string(argv[4]);
     std::string adjustment_str = argv[5];
@@ -658,9 +655,6 @@ int runTetMode(int argc, char* argv[]) {
     int topK = 0;
     std::string tet_labels_file = "";  // Optional tet labels file
 
-    // JSONL logging (this driver) and metrics/logging for TopoMinCut.
-    std::string tetMetricsLogFile = "";
-    std::string topoMinCutMetricsLogFile = "";
     int cavitySkip = 0;
     int handleSkip = 0;
     int componentSkip = 0;
@@ -678,59 +672,16 @@ int runTetMode(int argc, char* argv[]) {
             cpp_program = argv[++i];
         } else if (std::string(argv[i]) == "--topK" && i + 1 < argc) {
             topK = std::stoi(argv[++i]);
-        } else if (std::string(argv[i]) == "--core" && i + 1 < argc) {
-            core = std::stod(argv[++i]);
-        } else if (std::string(argv[i]) == "--neighborhood" && i + 1 < argc) {
-            neighborhood = std::stod(argv[++i]);
         } else if (std::string(argv[i]) == "--tet_labels" && i + 1 < argc) {
             tet_labels_file = argv[++i];
-        } else if (std::string(argv[i]) == "--tetMetricsLog" && i + 1 < argc) {
-            tetMetricsLogFile = argv[++i];
         } else if (std::string(argv[i]) == "--cavitySkip" && i + 1 < argc) {
             cavitySkip = std::stoi(argv[++i]);
         } else if (std::string(argv[i]) == "--handleSkip" && i + 1 < argc) {
             handleSkip = std::stoi(argv[++i]);
         } else if (std::string(argv[i]) == "--componentSkip" && i + 1 < argc) {
             componentSkip = std::stoi(argv[++i]);
-        } else if (std::string(argv[i]) == "--topoMinCutMetricsLog" && i + 1 < argc) {
-            topoMinCutMetricsLogFile = argv[++i];
         }
     }
-    (void)topoMinCutMetricsLogFile; // TopoMinCut runner no longer writes metrics files
-
-    // Timings to write into JSONL (when enabled).
-    double simplex2TimeMs = -1.0;
-    double isosurfaceTimeMs = -1.0;
-
-    // Append a single JSON object per run (JSON Lines format).
-    auto appendJsonlMetrics = [&](double simplex2Ms, double isosurfaceMs) {
-        if (tetMetricsLogFile.empty()) return;
-
-        std::filesystem::path p(tetMetricsLogFile);
-        if (!p.parent_path().empty()) {
-            std::filesystem::create_directories(p.parent_path());
-        }
-
-        std::ofstream out(tetMetricsLogFile, std::ios::out | std::ios::app);
-        if (!out) {
-            std::cerr << "Warning: Failed to open tet metrics log for appending: " << tetMetricsLogFile << std::endl;
-            return;
-        }
-
-        auto jsonNumberOrNull = [&](double v) -> std::string {
-            if (std::isfinite(v)) {
-                std::ostringstream ss;
-                ss << std::setprecision(17) << v;
-                return ss.str();
-            }
-            return "null";
-        };
-
-        out << "{"
-            << "\"simplex2_ms\":" << jsonNumberOrNull(simplex2Ms) << ","
-            << "\"isosurface_ms\":" << jsonNumberOrNull(isosurfaceMs)
-            << "}\n";
-    };
 
     double adjustment = std::stod(adjustment_str);
 
@@ -758,12 +709,12 @@ int runTetMode(int argc, char* argv[]) {
     }
     
     // Read vertex alpha values
-    std::cout << "Reading vertex alpha values file: " << boundary_file << std::endl;
+    std::cout << "Reading vertex alpha values file: " << alpha_file << std::endl;
     std::vector<double> vertexAlphas;
     try {
 
         //adjustment is applied to the alpha values in the file
-        vertexAlphas = MSHReader::readVertexAlphas(boundary_file, adjustment);
+        vertexAlphas = MSHReader::readVertexAlphas(alpha_file, adjustment);
     } catch (const std::exception& e) {
         std::cerr << "Error reading vertex alpha values file: " << e.what() << std::endl;
         return 1;
@@ -1317,7 +1268,6 @@ int runTetMode(int argc, char* argv[]) {
     };
     
     /*
-    auto marchTetStartTime = std::chrono::steady_clock::now();
     // Run marching tetrahedra on original mesh (before topoMinCut)
     std::cout << "Running marching tetrahedra (before topoMinCut)..." << std::endl;
     auto [marchVerts, marchTris] = marchTet(vertices, tetrahedra, vertexAlphas);
@@ -1346,9 +1296,6 @@ int runTetMode(int argc, char* argv[]) {
         ofs.close();
     }
     std::cout << "Wrote marching tetrahedra result to output/marching_tet_before_topoMinCut.obj" << std::endl;
-    auto marchTetEndTime = std::chrono::steady_clock::now();
-    auto marchTetDuration = std::chrono::duration_cast<std::chrono::milliseconds>(marchTetEndTime - marchTetStartTime).count();
-    std::cout << "Marching tetrahedra took " << marchTetDuration << " ms" << std::endl;
 
     */
     // ============================================================================
@@ -1362,7 +1309,6 @@ int runTetMode(int argc, char* argv[]) {
     const int totalVertices = static_cast<int>(vertices.size());
 
     {
-        auto mapStartTime = std::chrono::steady_clock::now();
         const size_t nt = tetrahedra.size();
         // Upper-bound style reservation: cuts rehash churn on large meshes.
         edgeMap.reserve(std::max<size_t>(1024, nt * 3));
@@ -1398,9 +1344,6 @@ int runTetMode(int argc, char* argv[]) {
                 }
             }
         }
-        auto mapEndTime = std::chrono::steady_clock::now();
-        auto mapDuration = std::chrono::duration_cast<std::chrono::milliseconds>(mapEndTime - mapStartTime).count();
-        std::cout << "  Building edge and triangle maps: " << mapDuration << " ms" << std::endl;
     }
 
     const int totalEdges = static_cast<int>(edgeMap.size());
@@ -1432,9 +1375,6 @@ int runTetMode(int argc, char* argv[]) {
     std::cout << "Assigning alpha values to vertices..." << std::endl;
 
     
-    auto start_time = std::chrono::high_resolution_clock::now();
-
-    
     // Assign alpha values directly from the input file
     for (int i = 0; i < totalVertices; ++i) {
         cellAlpha[i] = vertexAlphas[i];
@@ -1442,11 +1382,8 @@ int runTetMode(int argc, char* argv[]) {
     
     std::cout << "Finished assigning alpha values to vertices" << std::endl;
 
-    auto sectionStartTime = std::chrono::steady_clock::now();
-
     // Compute alpha values for edges (max of endpoint vertices)
     {
-        auto startTime = std::chrono::steady_clock::now();
         for (const auto& pair : edgeMap) {
             int edge_id = pair.second;
             int v1 = pair.first.v1;
@@ -1455,14 +1392,10 @@ int runTetMode(int argc, char* argv[]) {
             double edge_val = std::max(cellAlpha[v1], cellAlpha[v2]);
             cellAlpha[edge_id] = edge_val;
         }
-        auto endTime = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        std::cout << "  Computing alpha values for edges: " << duration << " ms" << std::endl;
     }
 
     // Compute alpha values for triangles (max of 3 vertices)
     {
-        auto startTime = std::chrono::steady_clock::now();
         for (const auto& pair : triangleMap) {
             int triangle_id = pair.second;
             int v1 = pair.first.v1;
@@ -1472,14 +1405,10 @@ int runTetMode(int argc, char* argv[]) {
             double triangle_val = std::max({cellAlpha[v1], cellAlpha[v2], cellAlpha[v3]});
             cellAlpha[triangle_id] = triangle_val;
         }
-        auto endTime = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        std::cout << "  Computing alpha values for triangles: " << duration << " ms" << std::endl;
     }
 
     // Compute alpha values for tets (max of 4 vertices)
     {
-        auto startTime = std::chrono::steady_clock::now();
         int tet_id = totalVertices + totalEdges + totalTriangles;
         for (const auto& tetElem : tetrahedra) {
             double tet_val = std::max({cellAlpha[tetElem.v1], cellAlpha[tetElem.v2], cellAlpha[tetElem.v3], cellAlpha[tetElem.v4]});
@@ -1487,9 +1416,6 @@ int runTetMode(int argc, char* argv[]) {
             
             tet_id++;
         }
-        auto endTime = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        std::cout << "  Computing alpha values for tets: " << duration << " ms" << std::endl;
     }
 
     std::cout << "Finished setting up alpha values for all cells" << std::endl;
@@ -1497,7 +1423,6 @@ int runTetMode(int argc, char* argv[]) {
     
     // Now perform interface detection in the correct order
     {
-        auto startTime = std::chrono::steady_clock::now();
         std::cout << "Performing inRange and interface detection..." << std::endl;
 
         for (int i = 0; i < totalCells; ++i) {
@@ -1505,9 +1430,6 @@ int runTetMode(int argc, char* argv[]) {
             cellInRange[i] = true;
                 
         }
-        auto endTime = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        std::cout << "  Interface detection: " << duration << " ms" << std::endl;
     }
     
     // ============================================================================
@@ -1537,7 +1459,6 @@ int runTetMode(int argc, char* argv[]) {
 
     // Build SoA arrays directly from mesh + maps (pre-MinCut canonical representation)
     {
-        auto startTime = std::chrono::steady_clock::now();
 
         size_t nVertsIn = 0;
         for (int vid = 0; vid < totalVertices; ++vid) {
@@ -1648,11 +1569,9 @@ int runTetMode(int argc, char* argv[]) {
         }
         nTetsSoA = tetWrite;
 
-        auto endTime = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
-        std::cout << "  Built pre-MinCut SoA core: " << duration << " ms"
-                  << " (" << nVertsSoA << " v, " << nEdgesSoA << " e, "
-                  << nTrisSoA << " t, " << nTetsSoA << " T)" << std::endl;
+        std::cout << "  Built pre-MinCut SoA core: "
+                  << nVertsSoA << " v, " << nEdgesSoA << " e, "
+                  << nTrisSoA << " t, " << nTetsSoA << " T" << std::endl;
     }
 
     // Declare variables that will be used across multiple sections
@@ -1667,10 +1586,6 @@ int runTetMode(int argc, char* argv[]) {
 
     // Pre-subdivision object graph build removed: pre-MinCut now uses SoA-backed cc/vals/currentVerts.
     // Keep containers declared for downstream stages that still use Simplex objects.
-    
-    auto sectionEndTime = std::chrono::steady_clock::now();
-    auto sectionDuration = std::chrono::duration_cast<std::chrono::milliseconds>(sectionEndTime - sectionStartTime).count();
-    std::cout << "Total time for cell complex creation section: " << sectionDuration << " ms" << std::endl;
 
     // Cell-complex state used by refinement / TopoMinCut path.
     std::vector<std::vector<std::vector<int>>> cc(4);
@@ -1725,8 +1640,7 @@ int runTetMode(int argc, char* argv[]) {
     // Toggle: comment out the next block to skip subdivision and mesh rebuild from finalSubs.
     // ============================================================================
     std::cout << "Starting input tet complex subdivision..." << std::endl;
-    auto subdivisionStartTime = std::chrono::steady_clock::now();
-    
+
     // Step 2: Identify element types: -1 = inside, 0 = interface, 1 = outside
     // Array-based classification from cc (tri->tet incidence, edge->tri incidence, vertex->edge incidence).
     std::vector<int> faceTypes(cc[2].size(), 2);   // triangles
@@ -1735,7 +1649,6 @@ int runTetMode(int argc, char* argv[]) {
     auto getTetLabelByIndex = [&](size_t tetIdx) -> int {
         return (tetIdx < tetLabels.size()) ? tetLabels[tetIdx] : 0;
     };
-    auto startTime = std::chrono::steady_clock::now();
 
     const size_t triCountAll = cc[2].size();
     const size_t edgeCountAll = cc[1].size();
@@ -1854,8 +1767,6 @@ int runTetMode(int argc, char* argv[]) {
         std::vector<bool> tetSubdivideMask(cc[3].size(), false);
         
         
-            startTime = std::chrono::steady_clock::now();
-            
             // Process edges (dimension 1) - check if not surface and all vertices are surface
             for (size_t i = 0; i < cc[1].size(); ++i) {
                 if (i >= edgeTypes.size() || edgeTypes[i] == 0) {
@@ -1944,11 +1855,8 @@ int runTetMode(int argc, char* argv[]) {
         for (bool b : tetSubdivideMask) if (b) numTetsToSubdivide++;
 
 
-        auto endTime1 = std::chrono::steady_clock::now();
-        auto duration1 = std::chrono::duration_cast<std::chrono::milliseconds>(endTime1 - startTime).count();
         std::cout << "  Created subdivision masks: " << numEdgesToSubdivide << " edges, " 
-                  << numTrianglesToSubdivide << " triangles, " << numTetsToSubdivide << " tets: " 
-                  << duration1 << " ms" << std::endl;
+                  << numTrianglesToSubdivide << " triangles, " << numTetsToSubdivide << " tets" << std::endl;
         
         // Count elements by type
         size_t numSurfaceFaces = 0, numInsideFaces = 0, numOutsideFaces = 0;
@@ -1971,15 +1879,12 @@ int runTetMode(int argc, char* argv[]) {
             else if (type == 1) numOutsideVertices++;
         }
         
-        auto endTime = std::chrono::steady_clock::now();
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTime).count();
         std::cout << "  Identified faces: " << numSurfaceFaces << " surface, " 
                   << numInsideFaces << " inside, " << numOutsideFaces << " outside" << std::endl;
         std::cout << "  Identified edges: " << numSurfaceEdges << " surface, " 
                   << numInsideEdges << " inside, " << numOutsideEdges << " outside" << std::endl;
         std::cout << "  Identified vertices: " << numSurfaceVertices << " surface, " 
                   << numInsideVertices << " inside, " << numOutsideVertices << " outside" << std::endl;
-        std::cout << "  Classification took: " << duration << " ms" << std::endl;
     
     
     // Helper function to compute centroid
@@ -2219,10 +2124,6 @@ int runTetMode(int argc, char* argv[]) {
     // Note: The subdivided cell complex (cc, vals, currentVerts, finalSubs) is now ready to use
     // The old Simplex structure (allSimplices, verts, edges, triangles, tets) is replaced by
     // the subdivided cell complex structure for subsequent operations
-    
-    auto subdivisionEndTime = std::chrono::steady_clock::now();
-    auto subdivisionDuration = std::chrono::duration_cast<std::chrono::milliseconds>(subdivisionEndTime - subdivisionStartTime).count();
-    std::cout << "Input tet complex subdivision took " << subdivisionDuration << " ms" << std::endl;
 
     // ============================================================================
     // END OF INPUT TET COMPLEX SUBDIVISION
@@ -2237,8 +2138,7 @@ int runTetMode(int argc, char* argv[]) {
     // Rebuild the Simplex structure from the subdivided cell complex
     // We have: vertices with values, and tets (lists of 4 vertex indices)
     // This is equivalent to the initial setup - build cell complex from scratch
-    
-    startTime = std::chrono::steady_clock::now();
+
     std::cout << "Rebuilding Simplex structure from subdivided cell complex..." << std::endl;
 
     // Array-only rebuild: refined vertices + refined tets -> derive edges/tris + boundary.
@@ -2440,16 +2340,9 @@ int runTetMode(int argc, char* argv[]) {
         childrenIndices.resize(static_cast<size_t>(childrenOffsets.back()));
     }
 
-    auto end_time = std::chrono::high_resolution_clock::now();
-    auto simplice_generation_duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
     std::cout << "  Rebuilt arrays: " << V << " vertices, " << E << " edges, " << T << " triangles, " << TT
               << " tets (skipped invalid-vertex tets=" << skippedInvalidTetVerts
               << ", skipped missing-triangle tets=" << skippedMissingTriangle << ")" << std::endl;
-    std::cout << "Simplice generation took " << simplice_generation_duration.count() << " ms" << std::endl;
-
-    // "simplex /2" timing for JSONL export.
-    simplex2TimeMs = static_cast<double>(simplice_generation_duration.count());
-    
 
     // Current filter behavior is "keep all" in sorted order; avoid large FilterResult deep copies.
     std::vector<int> newToOld(static_cast<size_t>(N));
@@ -2593,15 +2486,7 @@ int runTetMode(int argc, char* argv[]) {
 
     
     std::cout << "Starting refinement and snapping after topoMinCut..." << std::endl;
-    auto pipelineStartTime = std::chrono::steady_clock::now();
-    auto stageStartTime = pipelineStartTime;
-    auto logStage = [&](const std::string& name) {
-        auto stageEnd = std::chrono::steady_clock::now();
-        auto stageMs = std::chrono::duration_cast<std::chrono::milliseconds>(stageEnd - stageStartTime).count();
-        std::cout << "  [PROFILE] " << name << ": " << stageMs << " ms" << std::endl;
-        stageStartTime = stageEnd;
-    };
-    
+
     // Array-native handoff (no object extraction).
     std::vector<Point3D> refinedVerts = currentVerts;
     std::vector<double> refinedVals = vertVals;
@@ -2614,7 +2499,6 @@ int runTetMode(int argc, char* argv[]) {
     std::vector<std::vector<int>> refinedTets(static_cast<size_t>(TT));
     std::vector<double> refinedTetVals = tetVals;
     for (int tti = 0; tti < TT; ++tti) refinedTets[static_cast<size_t>(tti)] = {refinedTetVerts[static_cast<size_t>(tti)][0], refinedTetVerts[static_cast<size_t>(tti)][1], refinedTetVerts[static_cast<size_t>(tti)][2], refinedTetVerts[static_cast<size_t>(tti)][3]};
-    logStage("extract_and_reindex_cell_complex");
     
     std::cout << "Extracted cell complex: " << refinedVerts.size() << " vertices, " 
               << refinedEdges.size() << " edges, " << refinedTriangles.size() << " triangles, "
@@ -2648,7 +2532,6 @@ int runTetMode(int argc, char* argv[]) {
     for (int tti = 0; tti < TT; ++tti) tetFaces[static_cast<size_t>(tti)] = {tetTrisById[static_cast<size_t>(tti)][0], tetTrisById[static_cast<size_t>(tti)][1], tetTrisById[static_cast<size_t>(tti)][2], tetTrisById[static_cast<size_t>(tti)][3]};
     cc[3] = tetFaces;
     vals[3] = refinedTetVals;
-    logStage("build_low_dimensional_complex");
 
     // Keep original cell complex for npars computation (we don't create a filtered version)
     // cc, vals, and refinedVerts remain unchanged
@@ -2765,7 +2648,6 @@ int runTetMode(int argc, char* argv[]) {
         }
         // If allSameSign is still true, this tet is excluded (already false in arrays)
     }
-    logStage("uniform_sign_tet_filter");
     
     // Index maps are already set up: -1 means excluded, >= 0 means included
     // We keep the original cell complex (cc, vals, refinedVerts) and check index maps during refinement
@@ -2862,8 +2744,6 @@ int runTetMode(int argc, char* argv[]) {
     */
 
 
-
-    auto refinementStartTime = std::chrono::steady_clock::now();
 
     // Initialize subdivisions: for each original cell, store list of refined cells (as vertex indices)
     // Start with vertex subdivisions (each vertex is itself)
@@ -3643,16 +3523,6 @@ int runTetMode(int argc, char* argv[]) {
         return {zeroVerts, triangles, zeroCrossingEdges, usedMidpoint};
     };
     
-    auto refinementEndTime = std::chrono::steady_clock::now();
-    auto refinementDuration = std::chrono::duration_cast<std::chrono::milliseconds>(refinementEndTime - refinementStartTime).count();
-    std::cout << "Refinement took " << refinementDuration << " ms" << std::endl;
-    auto pipelineDuration = std::chrono::duration_cast<std::chrono::milliseconds>(refinementEndTime - pipelineStartTime).count();
-    std::cout << "  [PROFILE] refine_pipeline_total: " << pipelineDuration << " ms" << std::endl;
-
-    // "isosurface time (refinement time)" timing for JSONL export.
-    isosurfaceTimeMs = static_cast<double>(refinementDuration)/2.0;
-    appendJsonlMetrics(simplex2TimeMs, isosurfaceTimeMs);
-    auto marchTetSnapStartTime = std::chrono::steady_clock::now();
     auto [snapVerts, snapTris, snapZeroCrossingEdges, snapUsedMidpoint] = marchTetSnap(refinedVerts, refinedTetElements, refinedVals, snapMask, n, changedFromPositiveToNegative);
     std::cout << "Marching tetrahedra with snapping produced " << snapVerts.size()
               << " vertices and " << snapTris.size() << " triangles" << std::endl;
@@ -4324,8 +4194,6 @@ int runTetMode(int argc, char* argv[]) {
         delete triangle;
     }
 
-    std::cout << "Simplice generation completed in " << simplice_generation_duration.count() << " milliseconds" << std::endl;
-    
     std::cout << "Processing completed successfully" << std::endl;
     return 0;
 

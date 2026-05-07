@@ -12,12 +12,13 @@ void printUsage(const char* prog) {
         << "Prescribed topological simplification — cubical | tet\n\n"
         << "Cubical:\n"
         << "  " << prog << " cubical <input.mrc> <out1> <out2> <adjustment> <dtype>\n"
-        << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>] [--core <v>] [--neighborhood <v>]\n\n"
+        << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>]\n"
+        << "               [--cavitySkip <n>] [--handleSkip <n>] [--componentSkip <n>]\n\n"
         << "Tet:\n"
-        << "  " << prog << " tet <mesh.msh> <boundary> <out1> <out2> <adjustment> <dtype>\n"
-        << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>] [--core <v>] [--neighborhood <v>]\n"
-        << "               [--tet_labels <path>] [--tetMetricsLog <jsonl>] [--cavitySkip <n>] [--handleSkip <n>]\n"
-        << "               [--componentSkip <n>] [--topoMinCutMetricsLog <path>] (accepted, unused)\n";
+        << "  " << prog << " tet <mesh.msh> <alpha_file> <out1> <out2> <adjustment> <dtype>\n"
+        << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>]\n"
+        << "               [--tet_labels <path>]\n"
+        << "               [--cavitySkip <n>] [--handleSkip <n>] [--componentSkip <n>]\n";
 }
 
 } // namespace
@@ -53,7 +54,7 @@ int main(int argc, char* argv[]) {
 
     if (mode == "tet") {
         if (subArgc < 7) {
-            std::cerr << "Tet mode needs: <mesh.msh> <boundary_file> <output_file> <output_file2> <adjustment> <dtype>\n\n";
+            std::cerr << "Tet mode needs: <mesh.msh> <alpha_file> <output_file> <output_file2> <adjustment> <dtype>\n\n";
             printUsage(argv[0]);
             return 1;
         }
