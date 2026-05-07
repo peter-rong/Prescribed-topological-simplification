@@ -92,16 +92,11 @@ PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <adjustment> <dt
 
 ---
 
-### TopoMinCut as a library
-
-For custom integrations, see [`TopoMinCut/include/topomincut_runner.hpp`](TopoMinCut/include/topomincut_runner.hpp) (`runFromEigenSparse`, `runFromBoundaryMatrix`). A small standalone **`TopoMinCut`** executable is still built for file-based matrix/alpha experiments; the main prescribed simplification driver does not require it.
-
----
-
 ## Layout
 
 | Path | Role |
 |------|------|
+| `TopoMinCut\` | Core code for topological simplification |
 | `main.cpp` | Mode dispatch |
 | `cubical_mode.*` | Grid / MRC |
 | `tet_mode.*` | Tet mesh / `.msh` |
