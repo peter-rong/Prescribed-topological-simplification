@@ -62,7 +62,6 @@ Aliases: **`cubic`** (same as **`cubical`**).
 | `adjustment` | Offset added to the scalar field so the target isosurface is the **0-level set** of the volume |
 | `dtype` | Dtype flag for the pipeline |
 | `-a`, `--ascii` *(optional)* | ASCII IO mode |
-| `--cpp_program <path>` *(optional)* | Ignored (backward-compatible scripts) |
 | `--topK <n>` *(optional)* | Ignore the *K* most persistent topological features. You do not need this flag if you set any of `--cavitySkip`, `--handleSkip`, or `--componentSkip`. |
 | `--cavitySkip <n>` *(optional)* | How many cavity (2D) features to preserve |
 | `--handleSkip <n>` *(optional)* | How many handle (1D) features to preserve |
@@ -85,9 +84,8 @@ PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <adjustment> <dt
 | `adjustment` | Offset added to the scalar field so the target isosurface is the **0-level set** of the volume |
 | `dtype` | Dtype flag for the pipeline |
 | `-a`, `--ascii` *(optional)* | ASCII IO mode |
-| `--cpp_program <path>` *(optional)* | Ignored (backward-compatible scripts) |
 | `--topK <n>` *(optional)* | Ignore the *K* most persistent topological features. You do not need this flag if you set any of `--cavitySkip`, `--handleSkip`, or `--componentSkip`. |
-| `--tet_labels <path>` *(optional)* | Tet label file |
+| `--tet_labels <path>` *(optional)* | Optional Tet label file to perform subdivision on input mesh for a more accurate input representation|
 | `--cavitySkip <n>` *(optional)* | How many cavity (2D) features to preserve |
 | `--handleSkip <n>` *(optional)* | How many handle (1D) features to preserve |
 | `--componentSkip <n>` *(optional)* | How many component (0D) features to preserve |
