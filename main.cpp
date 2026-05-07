@@ -9,15 +9,15 @@ namespace {
 
 void printUsage(const char* prog) {
     std::cerr
-        << "Prescribed topological simplification — dual modes\n\n"
-        << "Cubical (regular grid, MRC scalar volume):\n"
-        << "  " << prog << " cubical <input.mrc> <output_file> <output_file2> <adjustment> <dtype>\n"
-        << "      Optional: [-a|--ascii] [--cpp_program <path>] [--topK <n>] [--core <v>] [--neighborhood <v>]\n\n"
-        << "Tet (Gmsh tet mesh + boundary data):\n"
-        << "  " << prog << " tet <mesh.msh> <boundary_file> <output_file> <output_file2> <adjustment> <dtype>\n"
-        << "      Optional: [-a|--ascii] [--cpp_program <path>] [--topK <n>] [--core <v>] [--neighborhood <v>]\n"
+        << "Prescribed topological simplification — cubical | tet\n\n"
+        << "Cubical:\n"
+        << "  " << prog << " cubical <input.mrc> <out1> <out2> <adjustment> <dtype>\n"
+        << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>] [--core <v>] [--neighborhood <v>]\n\n"
+        << "Tet:\n"
+        << "  " << prog << " tet <mesh.msh> <boundary> <out1> <out2> <adjustment> <dtype>\n"
+        << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>] [--core <v>] [--neighborhood <v>]\n"
         << "               [--tet_labels <path>] [--tetMetricsLog <jsonl>] [--cavitySkip <n>] [--handleSkip <n>]\n"
-        << "               [--componentSkip <n>] [--topoMinCutMetricsLog <jsonl>]\n";
+        << "               [--componentSkip <n>] [--topoMinCutMetricsLog <path>] (accepted, unused)\n";
 }
 
 } // namespace

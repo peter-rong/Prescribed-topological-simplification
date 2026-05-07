@@ -1,152 +1,142 @@
 # Prescribed topological simplification
 
-Official repository for **Persistence-guided Prescribed Topological Simplification**, to appear in SIGGRAPH 2026.
+Reference code for **Persistence-guided Prescribed Topological Simplification** (SIGGRAPH 2026).
 
-Reference implementation in two geometry backends: 
+One executable supports **two usage modes** (same overall pipeline: filtration, then TopoMinCut min-cut step):
 
-| Mode | Domain | Primary input |
-|------|--------|----------------|
-| **Cubical** | Structured 3D grid | MRC volume (scalar field on voxels) |
-| **Tet** | Unstructured tetrahedral mesh | Gmsh `.msh` plus a boundary-definition file |
+| Mode | When to use it |
+|------|----------------|
+| **Cubical** | Scalar field on a 3D **regular grid** (MRC volume) |
+| **Tet** | Scalar field on an unstructured **tetrahedral mesh** (Gmsh `.msh` + boundary file) |
 
-Both modes share the same high-level pipeline (cell complex, filtration, and **TopoMinCut** min-cut optimization) but use **different input parsers and combinatorial complexes**, chosen explicitly at the command line.
+TopoMinCut lives under [`TopoMinCut/`](TopoMinCut/) and is **linked in-process** (boundary matrix and alphas passed as Eigen structures; the main driver does not spawn an external TopoMinCut process).
 
-TopoMinCut is **vendored** under [`TopoMinCut/`](TopoMinCut/) and linked **in-process**: boundary data are passed as **Eigen sparse matrices** (no temporary boundary-matrix files required). Optional artifacts are still written under `output/topomincut/` for debugging.
+## Dependencies
 
-### TopoMinCut library API
+- **CMake** ≥ 3.10, **C++17**
+- **Boost.Graph** — provide via your system, `CMAKE_PREFIX_PATH`, or [vcpkg](https://github.com/microsoft/vcpkg)
+- **Eigen** — headers already included under [`TopoMinCut/dependencies`](TopoMinCut/dependencies)
+- **PHAT** — vendored under [`TopoMinCut/phat`](TopoMinCut/phat)
 
-Headers used by the drivers:
+## Build
 
-- [`TopoMinCut/include/topomincut_runner.hpp`](TopoMinCut/include/topomincut_runner.hpp) — `topomincut::runFromEigenSparse(...)` and `topomincut::runFromBoundaryMatrix(...)`.
-- [`TopoMinCut/include/boundary_matrix.hpp`](TopoMinCut/include/boundary_matrix.hpp) — `BoundaryMatrix::loadFromEigenCopy`, `loadAlphasVector` for custom loaders.
-
-`topomincut::RunOutputs` returns updated alphas (`alphas_updated`), skeleton index lists, and the **first-iteration permuted** sparse boundary matrix (`permuted_boundary_matrix`) aligned with the legacy `new_matrix.txt` layout.
-
-A standalone CLI remains available as **`TopoMinCut`** (same math as before; supports `--outputDir <dir>` for writable outputs).
-
-## Requirements
-
-- **CMake** ≥ 3.10  
-- **C++17** compiler (GCC, Clang, or MSVC)
-- [**Boost.Graph**](https://www.boost.org/doc/libs/release/libs/graph/doc/table_of_contents.html) (for max-flow in TopoMinCut)
-- **Eigen** — bundled under [`TopoMinCut/dependencies`](TopoMinCut/dependencies) (header-only)
-- [**PHAT**](https://github.com/discounted-ph/phat) — bundled under [`TopoMinCut/phat`](TopoMinCut/phat) (built as a static library)
-
-On **Windows**, configuring CMake with the [vcpkg](https://github.com/microsoft/vcpkg) toolchain is the most reliable way to satisfy Boost:
+**Windows** (Boost via vcpkg):
 
 ```bash
 cmake -B build -DCMAKE_TOOLCHAIN_FILE=/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build build --config Release
 ```
 
-The unified driver accepts `--cpp_program` for **backward compatibility**; it is ignored because TopoMinCut runs in-process.
-
-## Build
-
-Configure and build from this directory (example **without** vcpkg, if Boost is already on `CMAKE_PREFIX_PATH`):
+**Other** (if Boost is already discoverable by CMake):
 
 ```bash
 cmake -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build --config Release
 ```
 
-The executable is produced as:
+Output binary:
 
-- **Linux/macOS:** `build/PrescribedTopologicalSimplification`  
-- **Windows (multi-config generators):** `build/Release/PrescribedTopologicalSimplification.exe`
+- Linux/macOS: `build/PrescribedTopologicalSimplification`
+- Windows (VS generator): `build/Release/PrescribedTopologicalSimplification.exe`
 
-### Parallel sorting (tet mode, optional)
+### Tet mode: parallel `std::sort` (optional)
 
-Tet mode may use `std::sort` with `<execution>` when available. If linking fails (for example, missing TBB on some Linux setups), uncomment in `CMakeLists.txt`:
+If linking fails on some Linux setups (e.g. missing TBB for `<execution>`), uncomment in root `CMakeLists.txt`:
 
 ```cmake
 target_compile_definitions(PrescribedTopologicalSimplification PRIVATE TOPOTET_NO_PAR_SORT)
 ```
 
-## Usage overview
-
-The first argument selects the backend; remaining arguments match the legacy **TopoCubical** / **TopoTet** CLIs (without repeating the executable name).
+## Command line
 
 ```text
-PrescribedTopologicalSimplification <cubical|tet> ...
+PrescribedTopologicalSimplification <cubical|cubic|tet> ...arguments...
 ```
 
-Use **`--help`** / **`-h`** / **`/?`** for a short reminder printed by the binary.
+`-h`, `--help`, or `/?` prints a short reminder.
 
-**Working directory:** many artifacts are written under a relative `output/` folder (meshes, skeleton PLY files, logs). Run the tool from the project directory where you want that `output/` tree created, or ensure relative paths resolve as intended.
+Run from a directory where relative **`output/`** is OK (both modes write artifacts there).
 
 ---
 
-## Cubical mode (`cubical` or `cubic`)
-
-For **regular-grid** data read from an **MRC** file.
+### Cubical mode
 
 ```text
-PrescribedTopologicalSimplification cubical <input.mrc> <output_file> <output_file2> <adjustment> <dtype> [options]
+PrescribedTopologicalSimplification cubical <input.mrc> <output_file> <output_file2> <adjustment> <dtype> [optional flags...]
 ```
 
-| Argument | Meaning |
-|----------|---------|
-| `input.mrc` | Path to the scalar volume (MRC format). |
-| `output_file`, `output_file2` | Basenames for intermediate matrices / alpha files (prepended with `output/` internally). |
-| `adjustment` | Scalar shift applied in pipeline (see implementation / paper). |
-| `dtype` | Dtype flag consumed by the pipeline (same as original cubical driver). |
+Aliases: **`cubic`** (same as **`cubical`**).
+
+**Required**
+
+| Argument | Description |
+|----------|-------------|
+| `input.mrc` | MRC scalar volume |
+| `output_file`, `output_file2` | Basenames; files are placed under `output/` |
+| `adjustment` | Scalar used in the pipeline (with `core` / `neighborhood`) |
+| `dtype` | Dtype flag for the pipeline |
 
 **Optional flags**
 
-| Flag | Purpose |
-|------|---------|
-| `-a`, `--ascii` | ASCII-related IO mode (same semantics as original). |
-| `--cpp_program <path>` | Path to **TopoMinCut** (or compatible) executable. |
-| `--topK <n>` | Passed through to the external solver. |
-| `--core <value>` | Core threshold (after adjustment in driver). |
-| `--neighborhood <value>` | Neighborhood threshold (after adjustment in driver). |
+| Flag | Description |
+|------|-------------|
+| `-a`, `--ascii` | ASCII IO mode |
+| `--cpp_program <path>` | Ignored (kept for backward-compatible scripts) |
+| `--topK <n>` | TopoMinCut: skip longest `n` persistence pairs when building cuts |
+| `--core <value>` | Core threshold (see implementation after adjustment) |
+| `--neighborhood <value>` | Neighborhood threshold (after adjustment) |
 
 ---
 
-## Tet mode (`tet`)
-
-For **tetrahedral meshes** from **Gmsh** plus boundary information.
+### Tet mode
 
 ```text
-PrescribedTopologicalSimplification tet <mesh.msh> <boundary_file> <output_file> <output_file2> <adjustment> <dtype> [options]
+PrescribedTopologicalSimplification tet <mesh.msh> <boundary_file> <output_file> <output_file2> <adjustment> <dtype> [optional flags...]
 ```
 
-| Argument | Meaning |
-|----------|---------|
-| `mesh.msh` | Tet mesh (Gmsh format). |
-| `boundary_file` | Boundary data expected by the original tet driver. |
-| `output_file`, `output_file2` | Same role as cubical mode (under `output/`). |
-| `adjustment`, `dtype` | Same convention as the original tet driver. |
+**Required**
+
+| Argument | Description |
+|----------|-------------|
+| `mesh.msh` | Gmsh tet mesh |
+| `boundary_file` | Boundary definition |
+| `output_file`, `output_file2` | Basenames under `output/` |
+| `adjustment`, `dtype` | Same roles as cubical mode |
 
 **Optional flags**
 
-Includes the same common flags as cubical mode (`-a`, `--cpp_program`, `--topK`, `--core`, `--neighborhood`), plus:
-
-| Flag | Purpose |
-|------|---------|
-| `--tet_labels <path>` | Optional tet label file. |
-| `--tetMetricsLog <jsonl>` | Append timing metrics (JSON Lines). |
-| `--cavitySkip <n>` | Skip cavities (driver-specific). |
-| `--handleSkip <n>` | Skip handles. |
-| `--componentSkip <n>` | Skip components. |
-| `--topoMinCutMetricsLog <jsonl>` | Metrics log for TopoMinCut. |
+| Flag | Description |
+|------|-------------|
+| `-a`, `--ascii` | ASCII IO mode |
+| `--cpp_program <path>` | Ignored (backward compatibility) |
+| `--topK <n>` | Same as cubical |
+| `--core <value>` | Same as cubical |
+| `--neighborhood <value>` | Same as cubical |
+| `--tet_labels <path>` | Optional tet label file |
+| `--tetMetricsLog <jsonl>` | Append driver timing (JSON Lines) |
+| `--cavitySkip <n>` | Skip first `n` cavity features (per driver logic) |
+| `--handleSkip <n>` | Skip first `n` handle features |
+| `--componentSkip <n>` | Skip first `n` component features |
+| `--topoMinCutMetricsLog <path>` | Accepted for compatibility; TopoMinCut no longer writes this log |
 
 ---
 
-## Source layout
+### TopoMinCut as a library
 
-| File | Role |
+For custom integrations, see [`TopoMinCut/include/topomincut_runner.hpp`](TopoMinCut/include/topomincut_runner.hpp) (`runFromEigenSparse`, `runFromBoundaryMatrix`). A small standalone **`TopoMinCut`** executable is still built for file-based matrix/alpha experiments; the main prescribed simplification driver does not require it.
+
+---
+
+## Layout
+
+| Path | Role |
 |------|------|
-| `main.cpp` | Mode dispatch and CLI parsing. |
-| `cubical_mode.cpp` / `cubical_mode.h` | Grid / cubical complex and MRC IO. |
-| `tet_mode.cpp` / `tet_mode.h` | Tet complex and `.msh` IO. |
-| `marching_cubes.cpp`, `marching_cubes.h` | Isosurface extraction (cubical path). |
-| `mrc_reader.h` | MRC reader (header-only implementation). |
-| `msh_reader.h` | Gmsh reader (header-only implementation). |
-
----
+| `main.cpp` | Mode dispatch |
+| `cubical_mode.*` | Grid / MRC |
+| `tet_mode.*` | Tet mesh / `.msh` |
+| `marching_cubes.*` | Isosurface (cubical path) |
+| `mrc_reader.h`, `msh_reader.h` | Readers |
 
 ## Citation
 
-If you use this code in academic work, please cite the accompanying paper *(add citation here once available)*.
+If you use this code academically, cite the paper *(add bibliographic entry when available)*.
