@@ -2559,19 +2559,19 @@ std::vector<std::vector<std::vector<bool>>> computeMarkedFromHighRes(
 
 int runCubicalMode(int argc, char* argv[]) {
     // Parse command line arguments
-    if (argc < 6) {
+    if (argc < 4) {
         std::cerr << "Usage: " << argv[0] 
-                  << " cubical <input_file> <output_file> <output_file2> <adjustment> <dtype> "
+                  << " cubical <input_file> <adjustment> <dtype> "
                   << "[-a] [--cpp_program <path>] [--topK <value>] "
                   << "[--cavitySkip <n>] [--handleSkip <n>] [--componentSkip <n>]" << std::endl;
         return 1;
     }
     
     std::string input_file = argv[1];
-    std::string output_file = "output/" + std::string(argv[2]);
-    std::string output_file2 = "output/" + std::string(argv[3]);
-    std::string adjustment_str = argv[4];
-    std::string dtype = argv[5];
+    std::string adjustment_str = argv[2];
+    std::string dtype = argv[3];
+    const std::string output_file = "output/cubical_filtered_simplices.txt";
+    const std::string output_file2 = "output/cubical_filtered_alphas.txt";
     
     bool ascii_mode = false;
     std::string cpp_program = "C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\build\\release\\TopoMinCut";
@@ -2586,7 +2586,7 @@ int runCubicalMode(int argc, char* argv[]) {
     bool create_3d_array = true;
     
     // Parse optional arguments
-    for (int i = 6; i < argc; ++i) {
+    for (int i = 4; i < argc; ++i) {
         if (std::string(argv[i]) == "-a" || std::string(argv[i]) == "--ascii") {
             ascii_mode = true;
         } else if (std::string(argv[i]) == "--cpp_program" && i + 1 < argc) {
@@ -3327,7 +3327,7 @@ int runCubicalMode(int argc, char* argv[]) {
     quads.clear();
     quads.shrink_to_fit();
 
-    
+    /*
     // Persist filtered inputs for TopoMinCut (ASCII mode expected by your pipeline)
     {
         std::ofstream f(output_file);
@@ -3352,7 +3352,7 @@ int runCubicalMode(int argc, char* argv[]) {
             f2 << s->val << std::endl;
         }
     }
-    
+    */
     std::vector<int> newToOld = filt.newToOld;
     // Note: marching cubes on original data removed since data was cleared for memory efficiency
     // If needed, re-read data or use a different approach

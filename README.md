@@ -51,7 +51,7 @@ Run from a directory where relative **`output/`** is OK (both modes write artifa
 ### Cubical mode
 
 ```text
-PrescribedTopologicalSimplification cubical <input.mrc> <output_file> <output_file2> <adjustment> <dtype> [options]
+PrescribedTopologicalSimplification cubical <input.mrc> <adjustment> <dtype> [options]
 ```
 
 Aliases: **`cubic`** (same as **`cubical`**).
@@ -59,38 +59,38 @@ Aliases: **`cubic`** (same as **`cubical`**).
 | Argument / option | Description |
 |-------------------|-------------|
 | `input.mrc` | MRC scalar volume |
-| `output_file`, `output_file2` | Basenames; files are placed under `output/` |
 | `adjustment` | Offset added to the scalar field so the target isosurface is the **0-level set** of the volume |
 | `dtype` | Dtype flag for the pipeline |
 | `-a`, `--ascii` *(optional)* | ASCII IO mode |
 | `--cpp_program <path>` *(optional)* | Ignored (backward-compatible scripts) |
-| `--topK <n>` *(optional)* | TopoMinCut: skip longest `n` persistence pairs when building cuts |
-| `--cavitySkip <n>` *(optional)* | TopoMinCut: skip the first `n` cavity (2D) features in generating sets |
-| `--handleSkip <n>` *(optional)* | TopoMinCut: skip the first `n` handle (1D) features |
-| `--componentSkip <n>` *(optional)* | TopoMinCut: skip the first `n` component (0D) features |
+| `--topK <n>` *(optional)* | Ignore the *K* most persistent topological features. You do not need this flag if you set any of `--cavitySkip`, `--handleSkip`, or `--componentSkip`. |
+| `--cavitySkip <n>` *(optional)* | How many cavity (2D) features to preserve |
+| `--handleSkip <n>` *(optional)* | How many handle (1D) features to preserve |
+| `--componentSkip <n>` *(optional)* | How many component (0D) features to preserve |
+
+Cubical mode also writes a filtered complex dump and per-simplex alphas to fixed paths: **`output/cubical_filtered_simplices.txt`** and **`output/cubical_filtered_alphas.txt`**.
 
 ---
 
 ### Tet mode
 
 ```text
-PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <output_file> <output_file2> <adjustment> <dtype> [options]
+PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <adjustment> <dtype> [options]
 ```
 
 | Argument / option | Description |
 |-------------------|-------------|
 | `mesh.msh` | Gmsh tet mesh |
 | `alpha_file` | One scalar **alpha** per mesh vertex (e.g. signed distance to the surface); file format is consumed by `MSHReader::readVertexAlphas` |
-| `output_file`, `output_file2` | Basenames under `output/` |
-| `adjustment` | Same as cubical: offsets the field so the desired isosurface is the **0-level set** |
+| `adjustment` | Offset added to the scalar field so the target isosurface is the **0-level set** of the volume |
 | `dtype` | Dtype flag for the pipeline |
 | `-a`, `--ascii` *(optional)* | ASCII IO mode |
-| `--cpp_program <path>` *(optional)* | Ignored (backward compatibility) |
-| `--topK <n>` *(optional)* | Same as cubical |
+| `--cpp_program <path>` *(optional)* | Ignored (backward-compatible scripts) |
+| `--topK <n>` *(optional)* | Ignore the *K* most persistent topological features. You do not need this flag if you set any of `--cavitySkip`, `--handleSkip`, or `--componentSkip`. |
 | `--tet_labels <path>` *(optional)* | Tet label file |
-| `--cavitySkip <n>` *(optional)* | Same as cubical (TopoMinCut) |
-| `--handleSkip <n>` *(optional)* | Same as cubical |
-| `--componentSkip <n>` *(optional)* | Same as cubical |
+| `--cavitySkip <n>` *(optional)* | How many cavity (2D) features to preserve |
+| `--handleSkip <n>` *(optional)* | How many handle (1D) features to preserve |
+| `--componentSkip <n>` *(optional)* | How many component (0D) features to preserve |
 
 ---
 

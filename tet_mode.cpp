@@ -634,9 +634,9 @@ struct TriangleKeyHash {
 
 int runTetMode(int argc, char* argv[]) {
     // Parse command line arguments
-    if (argc < 7) {
+    if (argc < 5) {
         std::cerr << "Usage: " << argv[0] 
-                  << " tet <mesh_file> <alpha_file> <output_file> <output_file2> <adjustment> <dtype> "
+                  << " tet <mesh_file> <alpha_file> <adjustment> <dtype> "
                   << "[-a] [--cpp_program <path>] [--topK <value>] "
                   << "[--tet_labels <path>] "
                   << "[--cavitySkip <number>] [--handleSkip <number>] [--componentSkip <number>]" << std::endl;
@@ -645,10 +645,8 @@ int runTetMode(int argc, char* argv[]) {
     
     std::string mesh_file = argv[1];
     std::string alpha_file = argv[2];
-    std::string output_file = "output/" + std::string(argv[3]);
-    std::string output_file2 = "output/" + std::string(argv[4]);
-    std::string adjustment_str = argv[5];
-    std::string dtype = argv[6];
+    std::string adjustment_str = argv[3];
+    std::string dtype = argv[4];
     
     bool ascii_mode = false;
     std::string cpp_program = "C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\build\\release\\TopoMinCut";
@@ -665,7 +663,7 @@ int runTetMode(int argc, char* argv[]) {
     bool create_3d_array = true;
     
     // Parse optional arguments
-    for (int i = 7; i < argc; ++i) {
+    for (int i = 5; i < argc; ++i) {
         if (std::string(argv[i]) == "-a" || std::string(argv[i]) == "--ascii") {
             ascii_mode = true;
         } else if (std::string(argv[i]) == "--cpp_program" && i + 1 < argc) {
@@ -1787,66 +1785,88 @@ int runTetMode(int argc, char* argv[]) {
                 }
             }
             
-            // Process triangles (dimension 2) - check if not surface and (all vertices are surface OR has subdivided child)
-            for (size_t i = 0; i < cc[2].size(); ++i) {
-                if (i >= faceTypes.size() || faceTypes[i] == 0) {
-                    continue;  // Skip surface triangles
+            // Process triangles (dimension 2): non-interface triangles only. Subdivide if some edge
+            // is subdivided or if all three corner vertices are surface (vertex type 0). Do not
+            // couple "subdivided child" with corner checks — once hasSubdividedChild was true, the
+            // old code skipped later edges and left allSurfaceVertices stuck at true by default.
+            for (size_t ti = 0; ti < cc[2].size(); ++ti) {
+                if (ti >= faceTypes.size() || faceTypes[ti] == 0) {
+                    continue;  // Skip interface triangles
                 }
-                
-                bool allSurfaceVertices = true;
                 bool hasSubdividedChild = false;
-                
-                for (int edgeIdx : cc[2][i]) {
-                    if (edgeIdx >= 0 && static_cast<size_t>(edgeIdx) < edgeSubdivideMask.size() && edgeSubdivideMask[static_cast<size_t>(edgeIdx)]) {
+                for (int edgeIdx : cc[2][ti]) {
+                    if (edgeIdx >= 0 && static_cast<size_t>(edgeIdx) < edgeSubdivideMask.size() &&
+                        edgeSubdivideMask[static_cast<size_t>(edgeIdx)]) {
                         hasSubdividedChild = true;
+                        break;
                     }
-                    if (!hasSubdividedChild && edgeIdx >= 0 && static_cast<size_t>(edgeIdx) < cc[1].size()) {
-                        for (int vIdx : cc[1][static_cast<size_t>(edgeIdx)]) {
-                            if (vIdx < 0 || static_cast<size_t>(vIdx) >= vertexTypes.size() || vertexTypes[static_cast<size_t>(vIdx)] != 0) {
-                                allSurfaceVertices = false;
-                                break;
-                            }
+                }
+                bool allCornersSurface = false;
+                if (ti < triVertsValid.size() && triVertsValid[ti]) {
+                    allCornersSurface = true;
+                    const auto& triVerts = triVertsCache[ti];
+                    for (int tv = 0; tv < 3; ++tv) {
+                        const int vIdx = triVerts[static_cast<size_t>(tv)];
+                        if (vIdx < 0 || static_cast<size_t>(vIdx) >= vertexTypes.size() ||
+                            vertexTypes[static_cast<size_t>(vIdx)] != 0) {
+                            allCornersSurface = false;
+                            break;
                         }
                     }
                 }
-                
-                if ((allSurfaceVertices || hasSubdividedChild) && cc[2][i].size() == 3) {
-                    triangleSubdivideMask[i] = true;
+                if ((allCornersSurface || hasSubdividedChild) && cc[2][ti].size() == 3) {
+                    triangleSubdivideMask[ti] = true;
                 }
             }
             
-            // Process tets (dimension 3) - check if all vertices are surface OR has subdivided child
-            for (size_t i = 0; i < cc[3].size(); ++i) {
-                bool allSurfaceVertices = true;
+            // Process tets (dimension 3): subdivide if a triangular face is subdivided or if the
+            // four tet corners (union of face vertex triples) are four distinct surface vertices.
+            for (size_t ti = 0; ti < cc[3].size(); ++ti) {
+                if (cc[3][ti].size() != 4) {
+                    continue;
+                }
                 bool hasSubdividedChild = false;
-                
-                for (int triIdx : cc[3][i]) {
-                    if (triIdx >= 0 && static_cast<size_t>(triIdx) < triangleSubdivideMask.size() && triangleSubdivideMask[static_cast<size_t>(triIdx)]) {
+                for (int faceTriIdx : cc[3][ti]) {
+                    if (faceTriIdx >= 0 && static_cast<size_t>(faceTriIdx) < triangleSubdivideMask.size() &&
+                        triangleSubdivideMask[static_cast<size_t>(faceTriIdx)]) {
                         hasSubdividedChild = true;
+                        break;
                     }
-                    if (!hasSubdividedChild && triIdx >= 0 && static_cast<size_t>(triIdx) < cc[2].size()) {
-                        if (!triVertsValid[static_cast<size_t>(triIdx)]) {
-                            allSurfaceVertices = false;
-                            continue;
-                        }
-                        const auto& triVerts = triVertsCache[static_cast<size_t>(triIdx)];
-                        for (int tv = 0; tv < 3; ++tv) {
-                            const int vIdx = triVerts[static_cast<size_t>(tv)];
-                            if (vIdx < 0 || static_cast<size_t>(vIdx) >= vertexTypes.size() || vertexTypes[static_cast<size_t>(vIdx)] != 0) {
-                                allSurfaceVertices = false;
+                }
+                bool allFourCornersSurface = false;
+                int cornerScratch[12];
+                int nCorner = 0;
+                bool cornersOk = true;
+                for (int faceTriIdx : cc[3][ti]) {
+                    if (faceTriIdx < 0 || static_cast<size_t>(faceTriIdx) >= triVertsValid.size() ||
+                        !triVertsValid[static_cast<size_t>(faceTriIdx)]) {
+                        cornersOk = false;
+                        break;
+                    }
+                    const auto& tvr = triVertsCache[static_cast<size_t>(faceTriIdx)];
+                    cornerScratch[nCorner++] = tvr[0];
+                    cornerScratch[nCorner++] = tvr[1];
+                    cornerScratch[nCorner++] = tvr[2];
+                }
+                if (cornersOk && nCorner == 12) {
+                    std::sort(cornerScratch, cornerScratch + nCorner);
+                    nCorner = static_cast<int>(std::unique(cornerScratch, cornerScratch + nCorner) - cornerScratch);
+                    if (nCorner == 4) {
+                        allFourCornersSurface = true;
+                        for (int k = 0; k < 4; ++k) {
+                            const int vIdx = cornerScratch[k];
+                            if (vIdx < 0 || static_cast<size_t>(vIdx) >= vertexTypes.size() ||
+                                vertexTypes[static_cast<size_t>(vIdx)] != 0) {
+                                allFourCornersSurface = false;
                                 break;
                             }
                         }
                     }
                 }
-                
-                if ((allSurfaceVertices || hasSubdividedChild) && cc[3][i].size() == 4) {
-                    tetSubdivideMask[i] = true;
+                if (allFourCornersSurface || hasSubdividedChild) {
+                    tetSubdivideMask[ti] = true;
                 }
-            
-            
-            
-        }
+            }
 
         // Count elements to be subdivided
         size_t numEdgesToSubdivide = 0, numTrianglesToSubdivide = 0, numTetsToSubdivide = 0;
@@ -2350,7 +2370,7 @@ int runTetMode(int argc, char* argv[]) {
     /*
     // Persist sorted inputs for TopoMinCut (ASCII mode expected by your pipeline)
     {
-        std::ofstream f(output_file);
+        std::ofstream f("output/tet_filtered_simplices.txt");
         f << dimsSorted.size() << std::endl;
         for (size_t col = 0; col < dimsSorted.size(); ++col) {
             f << dimsSorted[col];
@@ -2368,7 +2388,7 @@ int runTetMode(int argc, char* argv[]) {
         }
     }
     {
-        std::ofstream f2(output_file2);
+        std::ofstream f2("output/tet_filtered_alphas.txt");
         f2 << valsSorted.size() << std::endl;
         for (double v : valsSorted) {
             f2 << v << std::endl;
@@ -2435,7 +2455,7 @@ int runTetMode(int argc, char* argv[]) {
     std::vector<double> new_alpha_values = tet_topo_out.alphas_updated;
 
     // Update simplex values with new alpha values.
-    // Matrix / alphas passed to TopoMinCut are in *kept* order (j = 0 .. k-1), same as newToOld / output_file2.
+    // Matrix / alphas passed to TopoMinCut are in *kept* order (j = 0 .. k-1), same as newToOld.
     // Do not use allSimplices.size() here: newToOld only has k entries; indexing past k-1 is UB.
     // TopoMinCut's alphas_updated.txt lines align with j, not with old column index i.
     {
