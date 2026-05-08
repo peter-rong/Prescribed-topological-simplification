@@ -41,7 +41,7 @@ cmake --build build --config Release
 ## Usage
 
 ```text
-PrescribedTopologicalSimplification <cubical|cubic|tet> ...arguments...
+PrescribedTopologicalSimplification <cubical|tet> ...arguments...
 ```
 
 `-h`, `--help`, or `/?` prints a short reminder.
