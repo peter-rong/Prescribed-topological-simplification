@@ -634,9 +634,9 @@ struct TriangleKeyHash {
 
 int runTetMode(int argc, char* argv[]) {
     // Parse command line arguments
-    if (argc < 5) {
+    if (argc < 4) {
         std::cerr << "Usage: " << argv[0] 
-                  << " tet <mesh_file> <alpha_file> <adjustment> <dtype> "
+                  << " tet <mesh_file> <alpha_file> <adjustment> "
                   << "[-a] [--cpp_program <path>] [--topK <value>] "
                   << "[--tet_labels <path>] "
                   << "[--cavitySkip <number>] [--handleSkip <number>] [--componentSkip <number>]" << std::endl;
@@ -646,7 +646,6 @@ int runTetMode(int argc, char* argv[]) {
     std::string mesh_file = argv[1];
     std::string alpha_file = argv[2];
     std::string adjustment_str = argv[3];
-    std::string dtype = argv[4];
     
     bool ascii_mode = false;
     std::string cpp_program = "C:\\Users\\l.rong\\Desktop\\Research\\TopoMinCut\\build\\release\\TopoMinCut";
@@ -663,7 +662,7 @@ int runTetMode(int argc, char* argv[]) {
     bool create_3d_array = true;
     
     // Parse optional arguments
-    for (int i = 5; i < argc; ++i) {
+    for (int i = 4; i < argc; ++i) {
         if (std::string(argv[i]) == "-a" || std::string(argv[i]) == "--ascii") {
             ascii_mode = true;
         } else if (std::string(argv[i]) == "--cpp_program" && i + 1 < argc) {

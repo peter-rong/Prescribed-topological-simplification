@@ -51,7 +51,7 @@ Run from a directory where relative **`output/`** is OK (both modes write artifa
 ### Cubical mode
 
 ```text
-PrescribedTopologicalSimplification cubical <input.mrc> <adjustment> <dtype> [options]
+PrescribedTopologicalSimplification cubical <input.mrc> <adjustment> [options]
 ```
 
 Aliases: **`cubic`** (same as **`cubical`**).
@@ -60,7 +60,6 @@ Aliases: **`cubic`** (same as **`cubical`**).
 |-------------------|-------------|
 | `input.mrc` | MRC scalar volume |
 | `adjustment` | Offset added to the scalar field so the target isosurface is the **0-level set** of the volume |
-| `dtype` | Dtype flag for the pipeline |
 | `-a`, `--ascii` *(optional)* | ASCII IO mode |
 | `--topK <n>` *(optional)* | Ignore the *K* most persistent topological features. You do not need this flag if you set any of `--cavitySkip`, `--handleSkip`, or `--componentSkip`. |
 | `--cavitySkip <n>` *(optional)* | How many cavity (2D) features to preserve |
@@ -74,7 +73,7 @@ Cubical mode also writes a filtered complex dump and per-simplex alphas to fixed
 ### Tet mode
 
 ```text
-PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <adjustment> <dtype> [options]
+PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <adjustment> [options]
 ```
 
 | Argument / option | Description |
@@ -82,7 +81,6 @@ PrescribedTopologicalSimplification tet <mesh.msh> <alpha_file> <adjustment> <dt
 | `mesh.msh` | Gmsh tet mesh |
 | `alpha_file` | One scalar **alpha** per mesh vertex (e.g. signed distance to the surface); file format is consumed by `MSHReader::readVertexAlphas` |
 | `adjustment` | Offset added to the scalar field so the target isosurface is the **0-level set** of the volume |
-| `dtype` | Dtype flag for the pipeline |
 | `-a`, `--ascii` *(optional)* | ASCII IO mode |
 | `--topK <n>` *(optional)* | Ignore the *K* most persistent topological features. You do not need this flag if you set any of `--cavitySkip`, `--handleSkip`, or `--componentSkip`. |
 | `--tet_labels <path>` *(optional)* | Optional Tet label file to perform subdivision on input mesh for a more accurate input representation|

@@ -2559,9 +2559,9 @@ std::vector<std::vector<std::vector<bool>>> computeMarkedFromHighRes(
 
 int runCubicalMode(int argc, char* argv[]) {
     // Parse command line arguments
-    if (argc < 4) {
+    if (argc < 3) {
         std::cerr << "Usage: " << argv[0] 
-                  << " cubical <input_file> <adjustment> <dtype> "
+                  << " cubical <input_file> <adjustment> "
                   << "[-a] [--cpp_program <path>] [--topK <value>] "
                   << "[--cavitySkip <n>] [--handleSkip <n>] [--componentSkip <n>]" << std::endl;
         return 1;
@@ -2569,7 +2569,6 @@ int runCubicalMode(int argc, char* argv[]) {
     
     std::string input_file = argv[1];
     std::string adjustment_str = argv[2];
-    std::string dtype = argv[3];
     const std::string output_file = "output/cubical_filtered_simplices.txt";
     const std::string output_file2 = "output/cubical_filtered_alphas.txt";
     
@@ -2586,7 +2585,7 @@ int runCubicalMode(int argc, char* argv[]) {
     bool create_3d_array = true;
     
     // Parse optional arguments
-    for (int i = 4; i < argc; ++i) {
+    for (int i = 3; i < argc; ++i) {
         if (std::string(argv[i]) == "-a" || std::string(argv[i]) == "--ascii") {
             ascii_mode = true;
         } else if (std::string(argv[i]) == "--cpp_program" && i + 1 < argc) {

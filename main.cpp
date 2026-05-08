@@ -11,11 +11,11 @@ void printUsage(const char* prog) {
     std::cerr
         << "Prescribed topological simplification — cubical | tet\n\n"
         << "Cubical:\n"
-        << "  " << prog << " cubical <input.mrc> <adjustment> <dtype>\n"
+        << "  " << prog << " cubical <input.mrc> <adjustment>\n"
         << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>]\n"
         << "               [--cavitySkip <n>] [--handleSkip <n>] [--componentSkip <n>]\n\n"
         << "Tet:\n"
-        << "  " << prog << " tet <mesh.msh> <alpha_file> <adjustment> <dtype>\n"
+        << "  " << prog << " tet <mesh.msh> <alpha_file> <adjustment>\n"
         << "      Optional: [-a|--ascii] [--cpp_program <path>] (ignored) [--topK <n>]\n"
         << "               [--tet_labels <path>]\n"
         << "               [--cavitySkip <n>] [--handleSkip <n>] [--componentSkip <n>]\n";
@@ -44,8 +44,8 @@ int main(int argc, char* argv[]) {
     const int subArgc = static_cast<int>(shifted.size());
 
     if (mode == "cubical" || mode == "cubic") {
-        if (subArgc < 4) {
-            std::cerr << "Cubical mode needs: <input.mrc> <adjustment> <dtype>\n\n";
+        if (subArgc < 3) {
+            std::cerr << "Cubical mode needs: <input.mrc> <adjustment>\n\n";
             printUsage(argv[0]);
             return 1;
         }
@@ -53,8 +53,8 @@ int main(int argc, char* argv[]) {
     }
 
     if (mode == "tet") {
-        if (subArgc < 5) {
-            std::cerr << "Tet mode needs: <mesh.msh> <alpha_file> <adjustment> <dtype>\n\n";
+        if (subArgc < 4) {
+            std::cerr << "Tet mode needs: <mesh.msh> <alpha_file> <adjustment>\n\n";
             printUsage(argv[0]);
             return 1;
         }
